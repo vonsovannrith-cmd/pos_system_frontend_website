@@ -24,3 +24,29 @@ export type PageResponse<T> = {
   totalElements: number;
   totalPages: number;
 };
+
+export type OrderItem = {
+  productId: number;
+  productName: string;
+  sku: string;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+};
+
+export type Order = {
+  id: number;
+  orderNumber: string;
+  cashierEmail: string;
+  items: OrderItem[];
+  subtotal: number;
+  discountAmount: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  paymentMethod: string;
+  amountPaid: number;
+  changeAmount: number;
+  status: string;
+  createdAt: string;
+};
