@@ -19,12 +19,15 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   });
 
   if (!res.ok) {
-    let message = "what went wrong";
+    let message =
+      res.status === 403 ? "Access denied" : `Request failed with status ${res.status}`;
     try {
       const body = await res.json();
       message = body.message ?? message;
     } catch {}
     throw new ApiError(res.status, message);
   }
+
+  if (res.status === 204) return undefined as T;   // គ្មាន Body
   return res.json() as Promise<T>;
 }
