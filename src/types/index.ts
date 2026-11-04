@@ -49,4 +49,54 @@ export type Order = {
   changeAmount: number;
   status: string;
   createdAt: string;
+  cancelReason: string | null;
+  cancelledBy: string | null;
+  cancelledAt: string | null;
+};
+
+export type OrderSummary = {
+  id: number;
+  orderNumber: string;
+  cashierEmail: string;
+  total: number;
+  paymentMethod: string;
+  status: string;
+  createdAt: string;
+};
+
+export type Settings = {
+  storeName: string;
+  address: string | null;
+  phone: string | null;
+  taxRate: number;
+  usdToKhr: number;
+  defaultLowStockThreshold: number;
+};
+
+export type SalesSummary = { orderCount: number; revenue: number; discount: number; tax: number };
+export type CashierSales = { cashierEmail: string; orderCount: number; revenue: number };
+export type ProductSales = {
+  productId: number;
+  productName: string;
+  sku: string;
+  quantity: number;
+  revenue: number;
+};
+export type DailyPoint = { date: string; orders: number; revenue: number };
+export type ChartPoint = { label: string; orders: number; revenue: number };
+
+export type SalesReport = {
+  from: string;
+  to: string;
+  summary: SalesSummary;
+  byCashier: CashierSales[];
+  byProduct: ProductSales[];
+  daily: DailyPoint[];
+};
+
+export type Dashboard = {
+  today: SalesSummary;
+  month: SalesSummary;
+  lowStockCount: number;
+  topProducts: ProductSales[];
 };

@@ -20,7 +20,7 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
     barcode: product?.barcode ?? "",
     price: product ? String(product.price) : "",
     costPrice: product ? String(product.costPrice) : "0",
-    lowStockThreshold: product ? String(product.lowStockThreshold) : "5",
+    lowStockThreshold: product ? String(product.lowStockThreshold) : "",
     categoryId: product?.categoryId ? String(product.categoryId) : "",
   });
   const [error, setError] = useState("");
@@ -42,7 +42,7 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
       barcode: form.barcode || null,
       price: Number(form.price),
       costPrice: Number(form.costPrice),
-      lowStockThreshold: Number(form.lowStockThreshold),
+      lowStockThreshold: form.lowStockThreshold === "" ? null : Number(form.lowStockThreshold),
       categoryId: form.categoryId ? Number(form.categoryId) : null,
     };
 

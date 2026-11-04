@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -5,26 +6,46 @@ import { apiFetch } from "@/lib/api";
 import { money, round2 } from "@/lib/money";
 import Receipt from "@/components/Receipt";
 import type { Category, Order, PageResponse, Product } from "@/types";
+import { useSettings } from "@/lib/useSettings";
 
-// ប្រាក់ពន្ធ 10%
-const TAX_RATE = 10;
+type CartLine = {
+  product: Product;
+  quantity: number;
+};
 
-type CartLine = { product: Product; quantity: number };
 type Method = "CASH" | "KHQR" | "CARD";
 
+type DiscountType = "PERCENT" | "AMOUNT";
+
 const chip = (active: boolean) =>
-  `rounded-full border px-3 py-1 text-sm ${active ? "bg-blue-600 text-white" : "bg-white"}`;
+  `rounded-full border px-3 py-1 text-sm transition ${
+    active
+      ? "border-blue-600 bg-blue-600 text-white"
+      : "bg-white hover:border-blue-500"
+  }`;
+
+const inputClass = "w-full rounded border p-2 text-sm";
 
 export default function PosPage() {
+  const settings = useSettings();
+  const taxRate = Number(settings?.taxRate ?? 0);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
   const [keyword, setKeyword] = useState("");
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
 
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [discountType, setDiscountType] = useState<"PERCENT" | "AMOUNT">("PERCENT");
+
+  const [discountType, setDiscountType] =
+    useState<DiscountType>("PERCENT");
   const [discountValue, setDiscountValue] = useState("");
+
   const [method, setMethod] = useState<Method>("CASH");
   const [received, setReceived] = useState("");
 
@@ -32,292 +53,679 @@ export default function PosPage() {
   const [paying, setPaying] = useState(false);
   const [receipt, setReceipt] = useState<Order | null>(null);
 
-  // ---------- ទាញទំនិញ ----------
+  // ---------- Search Debounce ----------
+
   useEffect(() => {
-    const t = setTimeout(() => setSearch(keyword), 400);   // Debounce
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => {
+      setSearch(keyword.trim());
+    }, 400);
+
+    return () => clearTimeout(timer);
   }, [keyword]);
 
+  // ---------- Load Categories ----------
+
   useEffect(() => {
-    apiFetch<Category[]>("/api/categories").then(setCategories).catch(() => {});
+    let cancelled = false;
+
+    async function loadCategories() {
+      setLoadingCategories(true);
+
+      try {
+        const data = await apiFetch<Category[]>("/api/categories");
+
+        if (!cancelled) {
+          setCategories(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "មិនអាចទាញយកប្រភេទទំនិញបានទេ",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingCategories(false);
+        }
+      }
+    }
+
+    loadCategories();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  // ---------- Load Products ----------
+
   const loadProducts = useCallback(async () => {
+    setLoadingProducts(true);
+
     try {
       const params = new URLSearchParams({
-        page: "0", size: "60", sort: "name,asc", activeOnly: "true",
+        page: "0",
+        size: "60",
+        sort: "name,asc",
+        activeOnly: "true",
       });
-      if (search) params.set("keyword", search);
-      if (categoryId) params.set("categoryId", categoryId);
-      const res = await apiFetch<PageResponse<Product>>(`/api/products?${params}`);
-      setProducts(res.content);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "មានបញ្ហា");
+
+      if (search) {
+        params.set("keyword", search);
+      }
+
+      if (categoryId) {
+        params.set("categoryId", categoryId);
+      }
+
+      const result = await apiFetch<PageResponse<Product>>(
+        `/api/products?${params.toString()}`,
+      );
+
+      setProducts(result.content);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "មិនអាចទាញយកទំនិញបានទេ",
+      );
+    } finally {
+      setLoadingProducts(false);
     }
   }, [search, categoryId]);
 
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    let cancelled = false;
 
-  // ---------- កន្ត្រក ----------
-  function addToCart(p: Product) {
+    async function fetchProducts() {
+      setLoadingProducts(true);
+
+      try {
+        const params = new URLSearchParams({
+          page: "0",
+          size: "60",
+          sort: "name,asc",
+          activeOnly: "true",
+        });
+
+        if (search) params.set("keyword", search);
+        if (categoryId) params.set("categoryId", categoryId);
+
+        const result = await apiFetch<PageResponse<Product>>(
+          `/api/products?${params.toString()}`,
+        );
+
+        if (!cancelled) {
+          setProducts(result.content);
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "មិនអាចទាញយកទំនិញបានទេ",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingProducts(false);
+        }
+      }
+    }
+
+    fetchProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [search, categoryId]);
+
+  // ---------- Shopping Cart ----------
+
+  function addToCart(product: Product) {
     setError("");
-    setCart((prev) => {
-      const line = prev.find((l) => l.product.id === p.id);
-      if (line) {
-        if (line.quantity >= p.stockQuantity) return prev;   // មិនឱ្យលើសស្តុក
-        return prev.map((l) =>
-          l.product.id === p.id ? { ...l, quantity: l.quantity + 1 } : l
+
+    if (product.stockQuantity < 1) {
+      setError("ទំនិញនេះអស់ពីស្តុកហើយ");
+      return;
+    }
+
+    setCart((previous) => {
+      const existing = previous.find(
+        (line) => line.product.id === product.id,
+      );
+
+      if (existing) {
+        if (existing.quantity >= product.stockQuantity) {
+          return previous;
+        }
+
+        return previous.map((line) =>
+          line.product.id === product.id
+            ? { ...line, quantity: line.quantity + 1 }
+            : line,
         );
       }
-      if (p.stockQuantity < 1) return prev;
-      return [...prev, { product: p, quantity: 1 }];
+
+      return [...previous, { product, quantity: 1 }];
     });
   }
 
   function changeQty(id: number, delta: number) {
-    setCart((prev) =>
-      prev.flatMap((l) => {
-        if (l.product.id !== id) return [l];
-        const q = l.quantity + delta;
-        if (q <= 0) return [];                       // ចំនួន 0 = លុបចេញ
-        if (q > l.product.stockQuantity) return [l]; // មិនឱ្យលើសស្តុក
-        return [{ ...l, quantity: q }];
-      })
+    setCart((previous) =>
+      previous.flatMap((line) => {
+        if (line.product.id !== id) {
+          return [line];
+        }
+
+        const quantity = line.quantity + delta;
+
+        if (quantity <= 0) {
+          return [];
+        }
+
+        if (quantity > line.product.stockQuantity) {
+          return [line];
+        }
+
+        return [{ ...line, quantity }];
+      }),
     );
   }
 
-  // ស្កេន Barcode: Scanner វាយលេខ + Enter
-  async function onSearchKey(e: React.KeyboardEvent) {
+  function clearCart() {
+    setCart([]);
+    setDiscountValue("");
+    setReceived("");
+    setError("");
+  }
+
+  // ---------- Barcode Search ----------
+
+  async function onSearchKey(
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) {
     if (e.key !== "Enter" || !keyword.trim()) return;
+
+    e.preventDefault();
+    setError("");
+
     try {
-      const res = await apiFetch<PageResponse<Product>>(
-        `/api/products?activeOnly=true&keyword=${encodeURIComponent(keyword.trim())}`
+      const params = new URLSearchParams({
+        page: "0",
+        size: "60",
+        activeOnly: "true",
+        keyword: keyword.trim(),
+      });
+
+      const result = await apiFetch<PageResponse<Product>>(
+        `/api/products?${params.toString()}`,
       );
-      if (res.content.length === 1) {
-        addToCart(res.content[0]);
+
+      if (result.content.length === 1) {
+        addToCart(result.content[0]);
         setKeyword("");
+      } else if (result.content.length === 0) {
+        setError("រកមិនឃើញទំនិញនេះទេ");
+      } else {
+        setError("រកឃើញទំនិញច្រើន។ សូមជ្រើសរើសពីបញ្ជីខាងក្រោម");
+        setProducts(result.content);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "មានបញ្ហា");
+      setError(
+        err instanceof Error ? err.message : "មានបញ្ហាក្នុងការស្វែងរក",
+      );
     }
   }
 
-  // ---------- គណនា (បង្ហាញជាមុន) ----------
-  const dv = Number(discountValue) || 0;
+  // ---------- Calculate Totals ----------
+
+  const dv = discountValue.trim() === "" ? 0 : Number(discountValue);
 
   const totals = useMemo(() => {
-    const subtotal = round2(cart.reduce((s, l) => s + l.product.price * l.quantity, 0));
-    const discount = discountType === "PERCENT" ? round2((subtotal * dv) / 100) : round2(dv);
+    const subtotal = round2(
+      cart.reduce(
+        (sum, line) =>
+          sum + Number(line.product.price) * line.quantity,
+        0,
+      ),
+    );
+
+    const discount =
+      discountType === "PERCENT"
+        ? round2((subtotal * dv) / 100)
+        : round2(dv);
+
     const taxable = Math.max(0, round2(subtotal - discount));
-    const tax = round2((taxable * TAX_RATE) / 100);
+
+    const tax = round2((taxable * taxRate) / 100);
+
     const total = round2(taxable + tax);
-    return { subtotal, discount, tax, total };
-  }, [cart, discountType, dv]);
+
+    return {
+      subtotal,
+      discount,
+      taxable,
+      tax,
+      total,
+    };
+  }, [cart, discountType, dv, taxRate]);
 
   const invalidDiscount =
-    totals.discount > totals.subtotal || (discountType === "PERCENT" && dv > 100);
-  const receivedNum = Number(received) || 0;
-  const change = method === "CASH" ? round2(receivedNum - totals.total) : 0;
-  const canPay =
-    cart.length > 0 && !invalidDiscount && (method !== "CASH" || receivedNum >= totals.total);
+    !Number.isFinite(dv) ||
+    dv < 0 ||
+    totals.discount > totals.subtotal ||
+    (discountType === "PERCENT" && dv > 100);
 
-  // ---------- បង់ប្រាក់ ----------
+  const receivedNum =
+    received.trim() === "" ? 0 : Number(received);
+
+  const validReceived =
+    Number.isFinite(receivedNum) && receivedNum >= 0;
+
+  const change =
+    method === "CASH" && validReceived
+      ? round2(receivedNum - totals.total)
+      : 0;
+
+  const canPay =
+    settings !== null &&
+    settings !== undefined &&
+    Number.isFinite(taxRate) &&
+    taxRate >= 0 &&
+    taxRate <= 100 &&
+    cart.length > 0 &&
+    !invalidDiscount &&
+    validReceived &&
+    (method !== "CASH" || receivedNum >= totals.total);
+
+  // ---------- Payment ----------
+
   async function pay() {
+    if (paying || !canPay) return;
+
     setPaying(true);
     setError("");
+
     try {
       const order = await apiFetch<Order>("/api/orders", {
         method: "POST",
         body: JSON.stringify({
-          // ផ្ញើតែ id និងចំនួន — គ្មានតម្លៃ!
-          items: cart.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
+          items: cart.map((line) => ({
+            productId: line.product.id,
+            quantity: line.quantity,
+          })),
+
           discountType: dv > 0 ? discountType : null,
           discountValue: dv > 0 ? dv : null,
+
           paymentMethod: method,
+
           amountPaid: method === "CASH" ? receivedNum : null,
         }),
       });
+
       setReceipt(order);
       setCart([]);
       setDiscountValue("");
       setReceived("");
-      loadProducts();   // ទាញស្តុកថ្មី
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "មានបញ្ហា");
-      loadProducts();   // ស្តុកអាចបានប្តូរ
+
+      await loadProducts();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "ការទូទាត់មិនបានជោគជ័យទេ",
+      );
+
+      await loadProducts();
     } finally {
       setPaying(false);
     }
   }
 
+  // ---------- UI ----------
+
   return (
     <main className="grid gap-4 p-4 lg:grid-cols-3">
-      {/* ===== ឆ្វេង: ទំនិញ ===== */}
+
+      {/* LEFT: PRODUCTS */}
+
       <section className="lg:col-span-2">
+
         <input
           autoFocus
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           onKeyDown={onSearchKey}
           placeholder="Search or scan Barcode (Enter)"
-          className="mb-3 w-full rounded border p-2"
+          className="mb-3 w-full rounded border p-3"
         />
 
+        {/* Categories */}
+
         <div className="mb-3 flex flex-wrap gap-2">
-          <button onClick={() => setCategoryId("")} className={chip(categoryId === "")}>
+          <button
+            type="button"
+            onClick={() => setCategoryId("")}
+            className={chip(categoryId === "")}
+          >
             All Categories
           </button>
-          {categories.map((c) => (
+
+          {categories.map((category) => (
             <button
-              key={c.id}
-              onClick={() => setCategoryId(String(c.id))}
-              className={chip(categoryId === String(c.id))}
+              type="button"
+              key={category.id}
+              onClick={() => setCategoryId(String(category.id))}
+              className={chip(
+                categoryId === String(category.id),
+              )}
             >
-              {c.name}
+              {category.name}
             </button>
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-          {products.map((p) => {
-            const out = p.stockQuantity < 1;
-            return (
-              <button
-                key={p.id}
-                disabled={out}
-                onClick={() => addToCart(p)}
-                className="rounded-xl border bg-white p-3 text-left shadow-sm hover:border-blue-500 disabled:opacity-40"
-              >
-                <div className="font-semibold">{p.name}</div>
-                <div className="text-blue-600">{money(p.price)}</div>
-                <div className={`text-xs ${p.lowStock ? "text-red-600" : "text-gray-500"}`}>
-                  {out ? "Out of Stock" : `Stock: ${p.stockQuantity}`}
-                </div>
-              </button>
-            );
-          })}
-          {products.length === 0 && (
-            <p className="col-span-full text-gray-500">No products available</p>
-          )}
-        </div>
+        {loadingCategories && (
+          <p className="mb-3 text-sm text-gray-500">
+            កំពុងផ្ទុកប្រភេទទំនិញ...
+          </p>
+        )}
+
+        {/* Product List */}
+
+        {loadingProducts ? (
+          <p className="py-8 text-center text-gray-500">
+            កំពុងផ្ទុកទំនិញ...
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            {products.map((product) => {
+              const out = product.stockQuantity < 1;
+
+              return (
+                <button
+                  type="button"
+                  key={product.id}
+                  disabled={out}
+                  onClick={() => addToCart(product)}
+                  className="rounded-xl border bg-white p-3 text-left shadow-sm transition hover:border-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <div className="font-semibold">
+                    {product.name}
+                  </div>
+
+                  <div className="text-blue-600">
+                    {money(product.price)}
+                  </div>
+
+                  <div
+                    className={`text-xs ${
+                      product.lowStock
+                        ? "text-red-600"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {out
+                      ? "Out of Stock"
+                      : `Stock: ${product.stockQuantity}`}
+                  </div>
+                </button>
+              );
+            })}
+
+            {products.length === 0 && (
+              <p className="col-span-full py-6 text-center text-gray-500">
+                No products available
+              </p>
+            )}
+          </div>
+        )}
       </section>
 
-      {/* ===== ស្តាំ: កន្ត្រក ===== */}
-      <aside className="h-fit rounded-xl bg-white p-4 shadow lg:sticky lg:top-4">
-        <h2 className="mb-3 text-lg font-bold">Shopping Cart</h2>
+      {/* RIGHT: SHOPPING CART */}
 
-        {error && <div className="mb-3 rounded bg-red-100 p-2 text-sm text-red-700">{error}</div>}
+      <aside className="h-fit rounded-xl bg-white p-4 shadow lg:sticky lg:top-4">
+
+        <h2 className="mb-3 text-lg font-bold">
+          Shopping Cart
+        </h2>
+
+        {error && (
+          <div
+            role="alert"
+            className="mb-3 rounded bg-red-100 p-3 text-sm text-red-700"
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Cart Items */}
 
         <ul className="mb-3 max-h-64 divide-y overflow-y-auto">
-          {cart.map((l) => (
-            <li key={l.product.id} className="flex items-center gap-2 py-2 text-sm">
-              <div className="flex-1">
-                <div>{l.product.name}</div>
-                <div className="text-gray-500">{money(l.product.price)}</div>
+          {cart.map((line) => (
+            <li
+              key={line.product.id}
+              className="flex items-center gap-2 py-2 text-sm"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">
+                  {line.product.name}
+                </div>
+
+                <div className="text-gray-500">
+                  {money(line.product.price)}
+                </div>
               </div>
-              <button onClick={() => changeQty(l.product.id, -1)} className="h-7 w-7 rounded border">−</button>
-              <span className="w-6 text-center">{l.quantity}</span>
-              <button onClick={() => changeQty(l.product.id, 1)} className="h-7 w-7 rounded border">+</button>
-              <div className="w-20 text-right">{money(round2(l.product.price * l.quantity))}</div>
+
+              <button
+                type="button"
+                aria-label={`Decrease ${line.product.name}`}
+                onClick={() =>
+                  changeQty(line.product.id, -1)
+                }
+                className="h-7 w-7 rounded border"
+              >
+                −
+              </button>
+
+              <span className="w-6 text-center">
+                {line.quantity}
+              </span>
+
+              <button
+                type="button"
+                aria-label={`Increase ${line.product.name}`}
+                disabled={
+                  line.quantity >= line.product.stockQuantity
+                }
+                onClick={() =>
+                  changeQty(line.product.id, 1)
+                }
+                className="h-7 w-7 rounded border disabled:opacity-40"
+              >
+                +
+              </button>
+
+              <div className="w-20 text-right">
+                {money(
+                  round2(
+                    Number(line.product.price) * line.quantity,
+                  ),
+                )}
+              </div>
             </li>
           ))}
+
           {cart.length === 0 && (
-            <li className="py-6 text-center text-gray-400">Shopping Cart is empty</li>
+            <li className="py-6 text-center text-gray-400">
+              Shopping Cart is empty
+            </li>
           )}
         </ul>
 
         {/* Discount */}
+
         <div className="mb-3 flex gap-2">
           <select
             value={discountType}
-            onChange={(e) => setDiscountType(e.target.value as "PERCENT" | "AMOUNT")}
+            onChange={(e) =>
+              setDiscountType(e.target.value as DiscountType)
+            }
             className="rounded border p-2 text-sm"
           >
             <option value="PERCENT">Discount %</option>
             <option value="AMOUNT">Discount $</option>
           </select>
+
           <input
-            type="number" min="0" step="0.01"
+            type="number"
+            min="0"
+            step="0.01"
             value={discountValue}
-            onChange={(e) => setDiscountValue(e.target.value)}
+            onChange={(e) =>
+              setDiscountValue(e.target.value)
+            }
             placeholder="0"
-            className="w-full rounded border p-2 text-sm"
+            className={inputClass}
           />
         </div>
+
         {invalidDiscount && (
-          <p className="mb-2 text-xs text-red-600">Invalid discount value</p>
+          <p className="mb-2 text-xs text-red-600">
+            Invalid discount value. សូមពិនិត្យចំនួន Discount។
+          </p>
         )}
 
-        {/* សរុប */}
-        <div className="space-y-1 border-t pt-3 text-sm">
-          <div className="flex justify-between"><span>Subtotal</span><span>{money(totals.subtotal)}</span></div>
-          <div className="flex justify-between"><span>Discount</span><span>-{money(totals.discount)}</span></div>
-          <div className="flex justify-between"><span>VAT ({TAX_RATE}%)</span><span>{money(totals.tax)}</span></div>
-          <div className="flex justify-between text-xl font-bold">
-            <span>Total</span><span>{money(totals.total)}</span>
+        {/* Totals */}
+
+        <div className="space-y-2 border-t pt-3 text-sm">
+
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>{money(totals.subtotal)}</span>
+          </div>
+
+          <div className="flex justify-between">
+            <span>Discount</span>
+            <span>-{money(totals.discount)}</span>
+          </div>
+
+          <div className="flex justify-between">
+            <span>VAT ({taxRate}%)</span>
+            <span>{money(totals.tax)}</span>
+          </div>
+
+          <div className="flex justify-between border-t pt-2 text-xl font-bold">
+            <span>Total</span>
+            <span>{money(totals.total)}</span>
           </div>
         </div>
 
-        {/* វិធីបង់ប្រាក់ */}
+        {/* Payment Method */}
+
         <div className="mt-4 grid grid-cols-3 gap-2">
-          {(["CASH", "KHQR", "CARD"] as Method[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMethod(m)}
-              className={`rounded border py-2 text-sm font-semibold ${
-                method === m ? "border-blue-600 bg-blue-50 text-blue-700" : ""
-              }`}
-            >
-              {m}
-            </button>
-          ))}
+          {(["CASH", "KHQR", "CARD"] as Method[]).map(
+            (paymentMethod) => (
+              <button
+                type="button"
+                key={paymentMethod}
+                onClick={() => setMethod(paymentMethod)}
+                className={`rounded border py-2 text-sm font-semibold ${
+                  method === paymentMethod
+                    ? "border-blue-600 bg-blue-50 text-blue-700"
+                    : "hover:bg-gray-50"
+                }`}
+              >
+                {paymentMethod}
+              </button>
+            ),
+          )}
         </div>
+
+        {/* Cash Payment */}
 
         {method === "CASH" && (
           <div className="mt-3">
             <div className="flex gap-2">
               <input
-                type="number" min="0" step="0.01"
+                type="number"
+                min="0"
+                step="0.01"
                 value={received}
-                onChange={(e) => setReceived(e.target.value)}
+                onChange={(e) =>
+                  setReceived(e.target.value)
+                }
                 placeholder="Amount Received ($)"
-                className="w-full rounded border p-2"
+                className={inputClass}
               />
+
               <button
-                onClick={() => setReceived(String(totals.total))}
+                type="button"
+                onClick={() =>
+                  setReceived(String(totals.total))
+                }
                 className="whitespace-nowrap rounded border px-3 text-sm"
               >
-                All
+                Exact
               </button>
             </div>
-            {receivedNum > 0 && (
-              <p className={`mt-1 text-sm ${change < 0 ? "text-red-600" : "text-green-700"}`}>
-                {change < 0 ? `Shortage: ${money(-change)}` : `Change: ${money(change)}`}
+
+            {received !== "" && validReceived && (
+              <p
+                className={`mt-2 text-sm ${
+                  change < 0
+                    ? "text-red-600"
+                    : "text-green-700"
+                }`}
+              >
+                {change < 0
+                  ? `Shortage: ${money(-change)}`
+                  : `Change: ${money(change)}`}
               </p>
             )}
           </div>
         )}
 
+        {/* Pay Button */}
+
         <button
+          type="button"
           onClick={pay}
           disabled={!canPay || paying}
-          className="mt-4 w-full rounded bg-green-600 py-3 text-lg font-bold text-white disabled:opacity-40"
+          className="mt-4 w-full rounded bg-green-600 py-3 text-lg font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {paying ? "Processing..." : `Pay ${money(totals.total)}`}
+          {paying
+            ? "Processing..."
+            : `Pay ${money(totals.total)}`}
         </button>
+
+        {/* Clear Cart */}
+
         {cart.length > 0 && (
           <button
-            onClick={() => { setCart([]); setDiscountValue(""); setReceived(""); }}
-            className="mt-2 w-full text-sm text-gray-500"
+            type="button"
+            disabled={paying}
+            onClick={clearCart}
+            className="mt-2 w-full py-2 text-sm text-gray-500 hover:text-red-600 disabled:opacity-40"
           >
             Clear Cart
           </button>
         )}
       </aside>
 
-      {receipt && <Receipt order={receipt} onClose={() => setReceipt(null)} />}
+      {/* Receipt */}
+
+      {receipt && (
+        <Receipt
+          order={receipt}
+          onClose={() => setReceipt(null)}
+        />
+      )}
     </main>
   );
 }

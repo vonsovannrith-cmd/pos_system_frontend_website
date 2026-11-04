@@ -31,3 +31,28 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   if (res.status === 204) return undefined as T;   // គ្មាន Body
   return res.json() as Promise<T>;
 }
+
+export async function apiDownload(path: string, filename: string): Promise<void> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    let message = res.status === 403 ? "អ្នកគ្មានសិទ្ធិធ្វើសកម្មភាពនេះទេ" : "មានបញ្ហាកើតឡើង";
+    try {
+      const body = await res.json();
+      message = body.message ?? message;
+    } catch {}
+    throw new ApiError(res.status, message);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
