@@ -28,7 +28,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     throw new ApiError(res.status, message);
   }
 
-  if (res.status === 204) return undefined as T;   // គ្មាន Body
+  if (res.status === 204) return undefined as T;   // No body
   return res.json() as Promise<T>;
 }
 
@@ -40,7 +40,7 @@ export async function apiDownload(path: string, filename: string): Promise<void>
   });
 
   if (!res.ok) {
-    let message = res.status === 403 ? "អ្នកគ្មានសិទ្ធិធ្វើសកម្មភាពនេះទេ" : "មានបញ្ហាកើតឡើង";
+    let message = res.status === 403 ? "You do not have permission to perform this action" : "An error occurred";
     try {
       const body = await res.json();
       message = body.message ?? message;

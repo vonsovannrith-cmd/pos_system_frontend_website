@@ -30,7 +30,7 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "មានបញ្ហាកើតឡើង");
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
@@ -43,7 +43,7 @@ export default function LoginPage() {
         className="w-full max-w-sm space-y-4 rounded-xl bg-white p-8 shadow"
       >
         <h1 className="text-2xl font-bold text-center">POS System</h1>
-        <p className="text-center text-sm text-gray-500">ចូលប្រើប្រាស់ប្រព័ន្ធ</p>
+        <p className="text-center text-sm text-gray-500">Sign in to your account</p>
 
         {error && (
           <div className="rounded bg-red-100 p-3 text-sm text-red-700">{error}</div>
@@ -70,7 +70,7 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full rounded bg-blue-600 p-2 font-semibold text-white disabled:opacity-50"
         >
-          {loading ? "" : "Login"}
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
     </main>

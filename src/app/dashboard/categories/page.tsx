@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -85,7 +84,7 @@ export default function CategoriesPage() {
     const categoryName = name.trim();
 
     if (!categoryName) {
-      setError("សូមបញ្ចូលឈ្មោះ Category");
+      setError("Please enter a category name");
       return;
     }
 
@@ -105,7 +104,7 @@ export default function CategoriesPage() {
       });
 
       setName("");
-      setMessage("បានបន្ថែម Category ដោយជោគជ័យ ✅");
+      setMessage("Category added successfully ✅");
 
       await load();
     } catch (err) {
@@ -125,7 +124,7 @@ export default function CategoriesPage() {
     if (deletingId !== null) return;
 
     const confirmed = window.confirm(
-      `តើអ្នកពិតជាចង់លុប Category "${category.name}" មែនទេ?`,
+      `Are you sure you want to delete the category "${category.name}"?`,
     );
 
     if (!confirmed) return;
@@ -140,7 +139,7 @@ export default function CategoriesPage() {
       });
 
       setMessage(
-        `បានលុប Category "${category.name}" ដោយជោគជ័យ ✅`,
+        `Category "${category.name}" deleted successfully ✅`,
       );
 
       await load();
@@ -160,7 +159,7 @@ export default function CategoriesPage() {
   if (!me) {
     return (
       <p className="p-8">
-        កំពុងផ្ទុកព័ត៌មានអ្នកប្រើប្រាស់...
+        Loading user information...
       </p>
     );
   }
@@ -177,7 +176,7 @@ export default function CategoriesPage() {
           </h1>
 
           <p className="mt-1 text-sm text-gray-500">
-            គ្រប់គ្រងប្រភេទទំនិញរបស់ហាង
+            Manage store product categories
           </p>
         </div>
 
@@ -249,7 +248,7 @@ export default function CategoriesPage() {
 
         {loading ? (
           <div className="p-8 text-center text-gray-500">
-            កំពុងផ្ទុក Categories...
+            Loading categories...
           </div>
         ) : items.length === 0 ? (
           <div className="p-8 text-center text-gray-500">

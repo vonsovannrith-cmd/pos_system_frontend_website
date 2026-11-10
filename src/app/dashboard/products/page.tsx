@@ -23,7 +23,7 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
 
-  // Debounce: រង់ចាំ 400ms បន្ទាប់ពីឈប់វាយ ទើបស្វែងរក
+  // Debounce: Wait 400ms after typing stops before searching
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(keyword);
@@ -89,7 +89,7 @@ export default function ProductsPage() {
             onClick={() => { setEditing(null); setShowForm(true); }}
             className="rounded bg-blue-600 px-4 py-2 font-semibold text-white"
           >
-            + បន្ថែមទំនិញ
+            + Add Product
           </button>
         )}
       </div>

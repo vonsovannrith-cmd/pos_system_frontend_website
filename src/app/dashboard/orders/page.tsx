@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -78,7 +77,7 @@ export default function OrdersPage() {
   const load = useCallback(async () => {
     if (!validDateRange) {
       setData(null);
-      setError("ថ្ងៃចាប់ផ្តើមមិនអាចធំជាងថ្ងៃបញ្ចប់បានទេ");
+      setError("Start date cannot be later than end date");
       setLoading(false);
       return;
     }
@@ -93,7 +92,7 @@ export default function OrdersPage() {
       });
 
       Object.entries(query).forEach(([key, value]) => {
-        // Cashier filter សម្រាប់ Admin និង Manager ប៉ុណ្ណោះ
+        // Cashier filter for Admin and Manager only
         if (value && (key !== "cashier" || privileged)) {
           params.set(key, value);
         }
@@ -110,7 +109,7 @@ export default function OrdersPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "មិនអាចទាញយកប្រវត្តិការលក់បានទេ",
+          : "Unable to load sales history",
       );
     } finally {
       setLoading(false);
@@ -125,7 +124,7 @@ export default function OrdersPage() {
     async function fetchOrders() {
       if (!validDateRange) {
         setData(null);
-        setError("ថ្ងៃចាប់ផ្តើមមិនអាចធំជាងថ្ងៃបញ្ចប់បានទេ");
+        setError("Start date cannot be later than end date");
         setLoading(false);
         return;
       }
@@ -158,7 +157,7 @@ export default function OrdersPage() {
           setError(
             err instanceof Error
               ? err.message
-              : "មិនអាចទាញយកប្រវត្តិការលក់បានទេ",
+              : "Unable to load sales history",
           );
         }
       } finally {
@@ -205,7 +204,7 @@ export default function OrdersPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "មិនអាចបង្ហាញវិក្កយបត្របានទេ",
+          : "Unable to display receipt",
       );
     } finally {
       setViewing(false);
@@ -218,14 +217,14 @@ export default function OrdersPage() {
     if (!selected || actionLoading) return;
 
     if (type === "void" && !isToday(selected.createdAt)) {
-      setError("មិនអាច Void Order ដែលមិនមែនជាការលក់ថ្ងៃនេះបានទេ");
+      setError("Cannot void orders from previous days");
       return;
     }
 
     const reason = window.prompt(
       type === "void"
-        ? "សូមបញ្ចូលមូលហេតុនៃការ Void:"
-        : "សូមបញ្ចូលមូលហេតុនៃការ Refund:",
+        ? "Please enter the void reason:"
+        : "Please enter the refund reason:",
     );
 
     if (!reason?.trim()) return;
@@ -252,7 +251,7 @@ export default function OrdersPage() {
       setError(
         err instanceof Error
           ? err.message
-          : `មិនអាច ${type} Order បានទេ`,
+          : `Unable to ${type} order`,
       );
     } finally {
       setActionLoading(false);
@@ -263,7 +262,7 @@ export default function OrdersPage() {
 
   if (!me) {
     return (
-      <p className="p-8">កំពុងផ្ទុកព័ត៌មានអ្នកប្រើប្រាស់...</p>
+      <p className="p-8">Loading user information...</p>
     );
   }
 
@@ -273,10 +272,10 @@ export default function OrdersPage() {
     <main className="mx-auto max-w-6xl p-4 sm:p-8">
 
       <h1 className="mb-4 text-2xl font-bold">
-        ប្រវត្តិការលក់{" "}
+        Sales History{" "}
         {!privileged && (
           <span className="text-sm font-normal text-gray-500">
-            (របស់ខ្ញុំ)
+            (My Orders)
           </span>
         )}
       </h1>
@@ -287,7 +286,7 @@ export default function OrdersPage() {
 
         <input
           className={`${input} w-52`}
-          placeholder="លេខវិក្កយបត្រ"
+          placeholder="Receipt Number"
           value={filters.keyword}
           onChange={(e) =>
             updateFilter("keyword", e.target.value)
@@ -295,7 +294,7 @@ export default function OrdersPage() {
         />
 
         <label className="text-xs text-gray-500">
-          ចាប់ពី
+          From
           <input
             type="date"
             className={`${input} block`}
@@ -308,7 +307,7 @@ export default function OrdersPage() {
         </label>
 
         <label className="text-xs text-gray-500">
-          ដល់
+          To
           <input
             type="date"
             className={`${input} block`}
@@ -327,7 +326,7 @@ export default function OrdersPage() {
             updateFilter("paymentMethod", e.target.value)
           }
         >
-          <option value="">គ្រប់វិធីបង់ប្រាក់</option>
+          <option value="">All Payment Methods</option>
           <option value="CASH">CASH</option>
           <option value="KHQR">KHQR</option>
           <option value="CARD">CARD</option>
@@ -340,7 +339,7 @@ export default function OrdersPage() {
             updateFilter("status", e.target.value)
           }
         >
-          <option value="">គ្រប់ស្ថានភាព</option>
+          <option value="">All Statuses</option>
           <option value="COMPLETED">COMPLETED</option>
           <option value="VOIDED">VOIDED</option>
           <option value="REFUNDED">REFUNDED</option>
@@ -349,7 +348,7 @@ export default function OrdersPage() {
         {privileged && (
           <input
             className={`${input} w-52`}
-            placeholder="Email Cashier"
+            placeholder="Cashier Email"
             value={filters.cashier}
             onChange={(e) =>
               updateFilter("cashier", e.target.value)
@@ -362,7 +361,7 @@ export default function OrdersPage() {
           onClick={clearFilters}
           className="text-sm text-gray-500 underline"
         >
-          សម្អាត Filter
+          Clear Filters
         </button>
       </div>
 
@@ -381,7 +380,7 @@ export default function OrdersPage() {
 
       {loading && (
         <p className="mb-3 text-sm text-gray-500">
-          កំពុងផ្ទុកប្រវត្តិការលក់...
+          Loading sales history...
         </p>
       )}
 
@@ -392,13 +391,13 @@ export default function OrdersPage() {
 
           <thead className="bg-gray-100 text-gray-600">
             <tr>
-              <th className="p-3">លេខវិក្កយបត្រ</th>
-              <th className="p-3">កាលបរិច្ឆេទ</th>
+              <th className="p-3">Receipt No.</th>
+              <th className="p-3">Date</th>
               <th className="p-3">Cashier</th>
-              <th className="p-3">បង់ប្រាក់</th>
-              <th className="p-3 text-right">សរុប</th>
-              <th className="p-3">ស្ថានភាព</th>
-              <th className="p-3">សកម្មភាព</th>
+              <th className="p-3">Payment</th>
+              <th className="p-3 text-right">Total</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Actions</th>
             </tr>
           </thead>
 
@@ -449,7 +448,7 @@ export default function OrdersPage() {
                     onClick={() => view(order.id)}
                     className="text-blue-600 hover:underline disabled:opacity-50"
                   >
-                    {viewing ? "កំពុងផ្ទុក..." : "មើល"}
+                    {viewing ? "Loading..." : "View"}
                   </button>
                 </td>
               </tr>
@@ -461,7 +460,7 @@ export default function OrdersPage() {
                   colSpan={7}
                   className="p-6 text-center text-gray-500"
                 >
-                  មិនមានវិក្កយបត្រទេ
+                  No receipts found
                 </td>
               </tr>
             )}
@@ -472,7 +471,7 @@ export default function OrdersPage() {
                   colSpan={7}
                   className="p-6 text-center text-gray-500"
                 >
-                  មិនមានទិន្នន័យទេ
+                  No data available
                 </td>
               </tr>
             )}
@@ -491,12 +490,12 @@ export default function OrdersPage() {
             onClick={() => setPage((previous) => previous - 1)}
             className="rounded border px-3 py-2 disabled:opacity-40"
           >
-            ← ថយក្រោយ
+            ← Previous
           </button>
 
           <span>
-            ទំព័រ {data.page + 1} / {data.totalPages}
-            {" "} (សរុប {data.totalElements})
+            Page {data.page + 1} / {data.totalPages}
+            {" "} (Total {data.totalElements})
           </span>
 
           <button
@@ -507,7 +506,7 @@ export default function OrdersPage() {
             onClick={() => setPage((previous) => previous + 1)}
             className="rounded border px-3 py-2 disabled:opacity-40"
           >
-            បន្ទាប់ →
+            Next →
           </button>
         </div>
       )}
@@ -517,7 +516,7 @@ export default function OrdersPage() {
       {selected && (
         <Receipt
           order={selected}
-          closeLabel="បិទ"
+          closeLabel="Close"
           onClose={() => setSelected(null)}
           extra={
             privileged && selected.status === "COMPLETED" ? (
@@ -530,7 +529,7 @@ export default function OrdersPage() {
                     onClick={() => cancel("void")}
                     className="flex-1 rounded border border-red-300 py-2 text-red-600 disabled:opacity-50"
                   >
-                    {actionLoading ? "កំពុងដំណើរការ..." : "Void"}
+                    {actionLoading ? "Processing..." : "Void"}
                   </button>
                 )}
 
@@ -540,7 +539,7 @@ export default function OrdersPage() {
                   onClick={() => cancel("refund")}
                   className="flex-1 rounded border border-orange-300 py-2 text-orange-700 disabled:opacity-50"
                 >
-                  {actionLoading ? "កំពុងដំណើរការ..." : "Refund"}
+                  {actionLoading ? "Processing..." : "Refund"}
                 </button>
               </div>
             ) : null

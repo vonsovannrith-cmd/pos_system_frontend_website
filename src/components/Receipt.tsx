@@ -5,8 +5,6 @@ import { money } from "@/lib/money";
 import type { Order } from "@/types";
 import { useSettings } from "@/lib/useSettings";
 
-
-
 type Props = {
   order: Order;
   onClose: () => void;
@@ -17,7 +15,7 @@ type Props = {
 export default function Receipt({
   order,
   onClose,
-  closeLabel = "លក់បន្ត",
+  closeLabel = "Continue Sales",
   extra,
 }: Props) {
   const settings = useSettings();
@@ -34,7 +32,7 @@ export default function Receipt({
           {settings?.phone && (
             <p className="text-center text-xs">Tel: {settings.phone}</p>
           )}
-          <p className="text-center text-xs">Recipt</p>
+          <p className="text-center text-xs">Receipt</p>
 
           {order.status !== "COMPLETED" && (
             <div className="my-2 border-2 border-red-600 p-1 text-center font-bold text-red-600">

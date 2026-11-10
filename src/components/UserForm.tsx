@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/api";
 import type { AppUser } from "@/types";
 
 type Props = {
-  user: AppUser | null; // null = បង្កើតថ្មី
+  user: AppUser | null; // null = create new
   isSelf: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -47,7 +47,7 @@ export default function UserForm({ user, isSelf, onClose, onSaved }: Props) {
       }
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "មានបញ្ហា");
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setSaving(false);
     }
@@ -56,12 +56,12 @@ export default function UserForm({ user, isSelf, onClose, onSaved }: Props) {
   return (
     <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4">
       <form onSubmit={submit} className="w-full max-w-md space-y-3 rounded-xl bg-white p-6 shadow-lg">
-        <h2 className="text-xl font-bold">{user ? "កែបុគ្គលិក" : "បន្ថែមបុគ្គលិកថ្មី"}</h2>
+        <h2 className="text-xl font-bold">{user ? "Edit Staff" : "Add New Staff"}</h2>
 
         {error && <div className="rounded bg-red-100 p-2 text-sm text-red-700">{error}</div>}
 
         <label className="block text-sm">
-          ឈ្មោះពេញ
+          Full Name
           <input className={inputClass} value={form.fullName}
             onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
         </label>
@@ -74,10 +74,10 @@ export default function UserForm({ user, isSelf, onClose, onSaved }: Props) {
 
         {!user && (
           <label className="block text-sm">
-            Password ដំបូង
+            Initial Password
             <input type="password" className={inputClass} value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-            <span className="text-xs text-gray-500">8–72 តួ មានអក្សរ និងលេខ</span>
+            <span className="text-xs text-gray-500">8–72 characters with letters and numbers</span>
           </label>
         )}
 
@@ -85,9 +85,9 @@ export default function UserForm({ user, isSelf, onClose, onSaved }: Props) {
           Role
           <select className={inputClass} value={form.role} disabled={isSelf}
             onChange={(e) => setForm({ ...form, role: e.target.value })}>
-            <option value="CASHIER">CASHIER: លក់ប៉ុណ្ណោះ</option>
-            <option value="MANAGER">MANAGER: គ្រប់គ្រងទំនិញ/របាយការណ៍</option>
-            <option value="ADMIN">ADMIN: គ្រប់យ៉ាង</option>
+            <option value="CASHIER">CASHIER: POS sales only</option>
+            <option value="MANAGER">MANAGER: Manage products/reports</option>
+            <option value="ADMIN">ADMIN: Full access</option>
           </select>
         </label>
 
@@ -95,15 +95,15 @@ export default function UserForm({ user, isSelf, onClose, onSaved }: Props) {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.active} disabled={isSelf}
               onChange={(e) => setForm({ ...form, active: e.target.checked })} />
-            គណនីសកម្ម (អាច Login)
+            Active Account (Can Login)
           </label>
         )}
-        {isSelf && <p className="text-xs text-gray-500">មិនអាចប្តូរ Role ឬបិទគណនីខ្លួនឯងបានទេ</p>}
+        {isSelf && <p className="text-xs text-gray-500">You cannot change your own role or disable your own account</p>}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded border px-4 py-2">បោះបង់</button>
+          <button type="button" onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
           <button disabled={saving} className="rounded bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
-            {saving ? "កំពុងរក្សាទុក..." : "រក្សាទុក"}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </form>

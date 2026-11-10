@@ -10,12 +10,12 @@ const MANAGERS = ["ADMIN", "MANAGER"];
 const links = [
   { href: "/dashboard", label: "Dashboard", roles: ALL },
   { href: "/dashboard/pos", label: "🛒 POS", roles: ALL },
-  { href: "/dashboard/orders", label: "ប្រវត្តិលក់", roles: ALL },
-  { href: "/dashboard/products", label: "ទំនិញ", roles: ALL },
-  { href: "/dashboard/categories", label: "ប្រភេទទំនិញ", roles: ALL },
-  { href: "/dashboard/reports", label: "របាយការណ៍", roles: MANAGERS },
-  { href: "/dashboard/users", label: "បុគ្គលិក", roles: ["ADMIN"] },
-  { href: "/dashboard/settings", label: "ការកំណត់", roles: ["ADMIN"] },
+  { href: "/dashboard/orders", label: "Orders", roles: ALL },
+  { href: "/dashboard/products", label: "Products", roles: ALL },
+  { href: "/dashboard/categories", label: "Categories", roles: ALL },
+  { href: "/dashboard/reports", label: "Reports", roles: MANAGERS },
+  { href: "/dashboard/users", label: "Staff", roles: ["ADMIN"] },
+  { href: "/dashboard/settings", label: "Settings", roles: ["ADMIN"] },
 ];
 
 export default function DashboardNav() {
@@ -39,7 +39,7 @@ export default function DashboardNav() {
           </Link>
         ))}
       <Link href="/dashboard/account" className="ml-auto text-gray-500">
-        🔑 ប្តូរ Password
+        🔑 Change Password
       </Link>
     </nav>
   );

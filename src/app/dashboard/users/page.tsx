@@ -28,7 +28,7 @@ export default function UsersPage() {
       setUsers(await apiFetch<AppUser[]>("/api/users"));
       setError("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "មានបញ្ហា");
+      setError(e instanceof Error ? e.message : "An error occurred");
     }
   }, []);
 
@@ -44,7 +44,7 @@ export default function UsersPage() {
       });
       load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "មានបញ្ហា");
+      setError(e instanceof Error ? e.message : "An error occurred");
     }
   }
 
@@ -56,16 +56,16 @@ export default function UsersPage() {
         method: "POST",
         body: JSON.stringify({ newPassword }),
       });
-      setMessage(`បានកំណត់ Password ថ្មីឱ្យ ${resetTarget.fullName}។ សូមប្រាប់គាត់ឱ្យប្តូរវាបន្ទាប់ពី Login`);
+      setMessage(`New password set for ${resetTarget.fullName}. Please instruct them to change it after login.`);
       setResetTarget(null);
       setNewPassword("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "មានបញ្ហា");
+      setError(err instanceof Error ? err.message : "An error occurred");
     }
   }
 
-  if (!me) return <p className="p-8">កំពុងផ្ទុក...</p>;
-  if (me.role !== "ADMIN") return <p className="p-8 text-red-600">តែ Admin ប៉ុណ្ណោះដែលអាចគ្រប់គ្រងបុគ្គលិក</p>;
+  if (!me) return <p className="p-8">Loading...</p>;
+  if (me.role !== "ADMIN") return <p className="p-8 text-red-600">Only Admins can manage staff</p>;
 
   const kw = keyword.trim().toLowerCase();
   const filtered = users.filter((u) => `${u.fullName} ${u.email}`.toLowerCase().includes(kw));
@@ -73,19 +73,19 @@ export default function UsersPage() {
   return (
     <main className="mx-auto max-w-5xl p-8">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">បុគ្គលិក</h1>
+        <h1 className="text-2xl font-bold">Staff</h1>
         <button
           onClick={() => { setEditing(null); setShowForm(true); }}
           className="rounded bg-blue-600 px-4 py-2 font-semibold text-white"
         >
-          + បន្ថែមបុគ្គលិក
+          + Add Staff
         </button>
       </div>
 
       <input
         value={keyword}
         onChange={(e) => setKeyword(e.target.value)}
-        placeholder="ស្វែងរកតាមឈ្មោះ / Email"
+        placeholder="Search by name / email"
         className="mb-4 w-full rounded border p-2"
       />
 
@@ -96,11 +96,11 @@ export default function UsersPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-100 text-gray-600">
             <tr>
-              <th className="p-3">ឈ្មោះ</th>
+              <th className="p-3">Name</th>
               <th className="p-3">Email</th>
               <th className="p-3">Role</th>
-              <th className="p-3">ស្ថានភាព</th>
-              <th className="p-3">សកម្មភាព</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -108,20 +108,20 @@ export default function UsersPage() {
               const self = u.email === me.email;
               return (
                 <tr key={u.id} className={`border-t ${u.active ? "" : "opacity-50"}`}>
-                  <td className="p-3">{u.fullName}{self && <span className="ml-1 text-xs text-gray-500">(ខ្ញុំ)</span>}</td>
+                  <td className="p-3">{u.fullName}{self && <span className="ml-1 text-xs text-gray-500">(You)</span>}</td>
                   <td className="p-3">{u.email}</td>
                   <td className="p-3">
                     <span className={`rounded-full px-2 py-1 text-xs font-semibold ${roleStyle[u.role] ?? ""}`}>{u.role}</span>
                   </td>
-                  <td className="p-3">{u.active ? "សកម្ម" : "ត្រូវបានបិទ"}</td>
+                  <td className="p-3">{u.active ? "Active" : "Disabled"}</td>
                   <td className="space-x-3 p-3">
-                    <button onClick={() => { setEditing(u); setShowForm(true); }} className="text-blue-600">កែ</button>
+                    <button onClick={() => { setEditing(u); setShowForm(true); }} className="text-blue-600">Edit</button>
                     <button onClick={() => { setResetTarget(u); setNewPassword(""); setMessage(""); }} className="text-orange-600">
                       Reset Password
                     </button>
                     {!self && (
                       <button onClick={() => toggleActive(u)} className="text-gray-600">
-                        {u.active ? "បិទ" : "បើក"}
+                        {u.active ? "Disable" : "Enable"}
                       </button>
                     )}
                   </td>
@@ -129,7 +129,7 @@ export default function UsersPage() {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={5} className="p-6 text-center text-gray-500">មិនមានបុគ្គលិកទេ</td></tr>
+              <tr><td colSpan={5} className="p-6 text-center text-gray-500">No staff found</td></tr>
             )}
           </tbody>
         </table>
@@ -152,13 +152,13 @@ export default function UsersPage() {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Password ថ្មី (8+ តួ, អក្សរ + លេខ)"
+              placeholder="New password (8+ chars, letters + numbers)"
               className="w-full rounded border p-2"
               required
             />
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setResetTarget(null)} className="rounded border px-4 py-2">បោះបង់</button>
-              <button className="rounded bg-orange-600 px-4 py-2 font-semibold text-white">កំណត់</button>
+              <button type="button" onClick={() => setResetTarget(null)} className="rounded border px-4 py-2">Cancel</button>
+              <button className="rounded bg-orange-600 px-4 py-2 font-semibold text-white">Reset</button>
             </div>
           </form>
         </div>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -82,7 +81,7 @@ export default function PosPage() {
           setError(
             err instanceof Error
               ? err.message
-              : "មិនអាចទាញយកប្រភេទទំនិញបានទេ",
+              : "Unable to load categories",
           );
         }
       } finally {
@@ -129,7 +128,7 @@ export default function PosPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "មិនអាចទាញយកទំនិញបានទេ",
+          : "Unable to load products",
       );
     } finally {
       setLoadingProducts(false);
@@ -166,7 +165,7 @@ export default function PosPage() {
           setError(
             err instanceof Error
               ? err.message
-              : "មិនអាចទាញយកទំនិញបានទេ",
+              : "Unable to load products",
           );
         }
       } finally {
@@ -189,7 +188,7 @@ export default function PosPage() {
     setError("");
 
     if (product.stockQuantity < 1) {
-      setError("ទំនិញនេះអស់ពីស្តុកហើយ");
+      setError("This product is out of stock");
       return;
     }
 
@@ -269,14 +268,14 @@ export default function PosPage() {
         addToCart(result.content[0]);
         setKeyword("");
       } else if (result.content.length === 0) {
-        setError("រកមិនឃើញទំនិញនេះទេ");
+        setError("Product not found");
       } else {
-        setError("រកឃើញទំនិញច្រើន។ សូមជ្រើសរើសពីបញ្ជីខាងក្រោម");
+        setError("Multiple products found. Please select from the list below.");
         setProducts(result.content);
       }
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "មានបញ្ហាក្នុងការស្វែងរក",
+        err instanceof Error ? err.message : "Error searching product",
       );
     }
   }
@@ -378,7 +377,7 @@ export default function PosPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "ការទូទាត់មិនបានជោគជ័យទេ",
+          : "Payment was not successful",
       );
 
       await loadProducts();
@@ -432,7 +431,7 @@ export default function PosPage() {
 
         {loadingCategories && (
           <p className="mb-3 text-sm text-gray-500">
-            កំពុងផ្ទុកប្រភេទទំនិញ...
+            Loading categories...
           </p>
         )}
 
@@ -440,7 +439,7 @@ export default function PosPage() {
 
         {loadingProducts ? (
           <p className="py-8 text-center text-gray-500">
-            កំពុងផ្ទុកទំនិញ...
+            Loading products...
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
@@ -597,7 +596,7 @@ export default function PosPage() {
 
         {invalidDiscount && (
           <p className="mb-2 text-xs text-red-600">
-            Invalid discount value. សូមពិនិត្យចំនួន Discount។
+            Invalid discount value. Please check the discount amount.
           </p>
         )}
 

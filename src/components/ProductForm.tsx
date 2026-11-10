@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/api";
 import type { Category, Product } from "@/types";
 
 type Props = {
-  product: Product | null; // null = បង្កើតថ្មី, មាន = កែ
+  product: Product | null; // null = create new, existing = edit
   categories: Category[];
   onClose: () => void;
   onSaved: () => void;

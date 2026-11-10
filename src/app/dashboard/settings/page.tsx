@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -61,7 +60,7 @@ export default function SettingsPage() {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "មិនអាចផ្ទុកការកំណត់បានទេ",
+            err instanceof Error ? err.message : "Unable to load settings",
           );
         }
       } finally {
@@ -98,12 +97,12 @@ export default function SettingsPage() {
       taxRate < 0 ||
       taxRate > 100
     ) {
-      setError("VAT ត្រូវតែមានតម្លៃចន្លោះពី 0 ដល់ 100");
+      setError("VAT must be between 0 and 100");
       return;
     }
 
     if (!Number.isFinite(usdToKhr) || usdToKhr <= 0) {
-      setError("អត្រាប្តូរប្រាក់ត្រូវតែធំជាង 0");
+      setError("Exchange rate must be greater than 0");
       return;
     }
 
@@ -111,7 +110,7 @@ export default function SettingsPage() {
       !Number.isInteger(lowStockThreshold) ||
       lowStockThreshold < 0
     ) {
-      setError("កម្រិតស្តុកទាបត្រូវតែជាចំនួនគត់ចាប់ពី 0 ឡើងទៅ");
+      setError("Low stock threshold must be an integer of 0 or greater");
       return;
     }
 
@@ -130,10 +129,10 @@ export default function SettingsPage() {
         }),
       });
 
-      setMessage("បានរក្សាទុករួចរាល់ ✅");
+      setMessage("Saved successfully ✅");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "មិនអាចរក្សាទុកការកំណត់បានទេ",
+        err instanceof Error ? err.message : "Unable to save settings",
       );
     } finally {
       setSaving(false);
@@ -141,20 +140,20 @@ export default function SettingsPage() {
   }
 
   if (!me) {
-    return <p className="p-8">កំពុងផ្ទុកព័ត៌មានអ្នកប្រើប្រាស់...</p>;
+    return <p className="p-8">Loading user information...</p>;
   }
 
   if (!isAdmin) {
     return (
       <p className="p-8 text-red-600">
-        តែ Admin ប៉ុណ្ណោះដែលអាចកែ Settings
+        Only Admins can modify settings
       </p>
     );
   }
 
   return (
     <main className="mx-auto max-w-lg p-8">
-      <h1 className="mb-4 text-2xl font-bold">ការកំណត់ហាង</h1>
+      <h1 className="mb-4 text-2xl font-bold">Store Settings</h1>
 
       {error && (
         <div
@@ -175,14 +174,14 @@ export default function SettingsPage() {
       )}
 
       {loading ? (
-        <p className="py-6">កំពុងផ្ទុកការកំណត់...</p>
+        <p className="py-6">Loading settings...</p>
       ) : (
         <form
           onSubmit={save}
           className="space-y-4 rounded-xl bg-white p-6 shadow"
         >
           <label className="block text-sm">
-            ឈ្មោះហាង
+            Store Name
             <input
               className={inputClass}
               value={form.storeName}
@@ -193,7 +192,7 @@ export default function SettingsPage() {
           </label>
 
           <label className="block text-sm">
-            អាសយដ្ឋាន
+            Address
             <input
               className={inputClass}
               value={form.address}
@@ -203,7 +202,7 @@ export default function SettingsPage() {
           </label>
 
           <label className="block text-sm">
-            លេខទូរស័ព្ទ
+            Phone Number
             <input
               type="tel"
               className={inputClass}
@@ -229,7 +228,7 @@ export default function SettingsPage() {
             </label>
 
             <label className="block text-sm">
-              1 USD = ? រៀល
+              1 USD = ? KHR
               <input
                 type="number"
                 step="0.01"
@@ -243,7 +242,7 @@ export default function SettingsPage() {
           </div>
 
           <label className="block text-sm">
-            កម្រិតព្រមានស្តុកទាបលំនាំដើម
+            Default Low Stock Threshold
             <input
               type="number"
               min="0"
@@ -258,8 +257,7 @@ export default function SettingsPage() {
           </label>
 
           <p className="text-xs text-gray-500">
-            ការប្តូរ VAT មានប្រសិទ្ធភាពសម្រាប់ការលក់ <b>ថ្មី</b> ប៉ុណ្ណោះ។
-            វិក្កយបត្រចាស់នៅដដែល។
+            Changing VAT only applies to <b>new</b> sales. Older receipts remain unchanged.
           </p>
 
           <button
@@ -267,7 +265,7 @@ export default function SettingsPage() {
             disabled={saving}
             className="w-full rounded bg-blue-600 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? "កំពុងរក្សាទុក..." : "រក្សាទុក"}
+            {saving ? "Saving..." : "Save"}
           </button>
         </form>
       )}

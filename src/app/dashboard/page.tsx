@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -13,9 +12,9 @@ import type { ChartPoint, Dashboard } from "@/types";
 type Period = "DAY" | "WEEK" | "MONTH";
 
 const periodLabel: Record<Period, string> = {
-  DAY: "30 ថ្ងៃ",
-  WEEK: "12 សប្តាហ៍",
-  MONTH: "12 ខែ",
+  DAY: "30 Days",
+  WEEK: "12 Weeks",
+  MONTH: "12 Months",
 };
 
 function Stat({
@@ -79,7 +78,7 @@ export default function DashboardPage() {
       } catch (e) {
         if (!cancelled) {
           setError(
-            e instanceof Error ? e.message : "មានបញ្ហាក្នុងការផ្ទុក Dashboard"
+            e instanceof Error ? e.message : "Error loading dashboard data"
           );
         }
       } finally {
@@ -116,7 +115,7 @@ export default function DashboardPage() {
       } catch (e) {
         if (!cancelled) {
           setError(
-            e instanceof Error ? e.message : "មានបញ្ហាក្នុងការផ្ទុកក្រាហ្វ"
+            e instanceof Error ? e.message : "Error loading chart data"
           );
         }
       } finally {
@@ -139,7 +138,7 @@ export default function DashboardPage() {
   }
 
   if (!me) {
-    return <p className="p-8">កំពុងផ្ទុក...</p>;
+    return <p className="p-8">Loading...</p>;
   }
 
   return (
@@ -147,7 +146,7 @@ export default function DashboardPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            សួស្តី {me.fullName} 👋
+            Welcome, {me.fullName} 👋
           </h1>
           <p className="text-sm text-gray-600">
             Role: <b>{me.role}</b> | {me.email}
@@ -167,7 +166,7 @@ export default function DashboardPage() {
           href="/dashboard/pos"
           className="inline-block rounded bg-green-600 px-6 py-3 text-lg font-bold text-white"
         >
-          🛒 ចាប់ផ្តើមលក់
+          🛒 Start POS
         </Link>
       )}
 
@@ -181,34 +180,34 @@ export default function DashboardPage() {
 
           {loadingDashboard && (
             <p className="mb-4 text-gray-500">
-              កំពុងផ្ទុកទិន្នន័យ Dashboard...
+              Loading dashboard data...
             </p>
           )}
 
           {data && (
             <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
               <Stat
-                title="ការលក់ថ្ងៃនេះ"
+                title="Today's Sales"
                 value={money(data.today.revenue)}
-                sub={`${data.today.orderCount} Order`}
+                sub={`${data.today.orderCount} Orders`}
               />
 
               <Stat
-                title="ការលក់ខែនេះ"
+                title="This Month's Sales"
                 value={money(data.month.revenue)}
-                sub={`${data.month.orderCount} Order`}
+                sub={`${data.month.orderCount} Orders`}
               />
 
               <Stat
-                title="VAT ខែនេះ"
+                title="This Month's VAT"
                 value={money(data.month.tax)}
               />
 
               <Link href="/dashboard/products">
                 <Stat
-                  title="ទំនិញស្តុកទាប"
+                  title="Low Stock Items"
                   value={String(data.lowStockCount)}
-                  sub="ចុចដើម្បីមើល"
+                  sub="Click to view"
                   danger={data.lowStockCount > 0}
                 />
               </Link>
@@ -218,7 +217,7 @@ export default function DashboardPage() {
           <div className="mb-6 rounded-xl bg-white p-4 shadow">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-bold">
-                ការលក់ ({periodLabel[period]})
+                Sales ({periodLabel[period]})
               </h2>
 
               <div className="flex gap-1">
@@ -240,7 +239,7 @@ export default function DashboardPage() {
 
             {loadingChart ? (
               <p className="py-8 text-center text-gray-500">
-                កំពុងផ្ទុកក្រាហ្វ...
+                Loading chart...
               </p>
             ) : (
               <SalesChart points={chart} />
@@ -249,16 +248,16 @@ export default function DashboardPage() {
 
           <div className="rounded-xl bg-white p-4 shadow">
             <h2 className="mb-3 font-bold">
-              ទំនិញលក់ដាច់ (7 ថ្ងៃចុងក្រោយ)
+              Top Selling Products (Last 7 Days)
             </h2>
 
             <table className="w-full text-left text-sm">
               <thead className="text-gray-500">
                 <tr>
                   <th className="py-1">#</th>
-                  <th>ទំនិញ</th>
-                  <th className="text-right">ចំនួន</th>
-                  <th className="text-right">ការលក់</th>
+                  <th>Product</th>
+                  <th className="text-right">Quantity</th>
+                  <th className="text-right">Sales</th>
                 </tr>
               </thead>
 
@@ -280,7 +279,7 @@ export default function DashboardPage() {
                       colSpan={4}
                       className="py-4 text-center text-gray-500"
                     >
-                      មិនទាន់មានការលក់
+                      No sales yet
                     </td>
                   </tr>
                 )}
