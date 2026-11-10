@@ -100,3 +100,12 @@ export type Dashboard = {
   lowStockCount: number;
   topProducts: ProductSales[];
 };
+
+export type AppUser = {
+  id: number;
+  fullName: string;
+  email: string;
+  role: string;
+  active: boolean;
+  createdAt: string;
+};
