@@ -1,24 +1,27 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useMe } from "@/lib/useMe";
 
 const ALL = ["ADMIN", "MANAGER", "CASHIER"];
 const MANAGERS = ["ADMIN", "MANAGER"];
 
 const links = [
-  { href: "/dashboard", label: "Dashboard", roles: ALL },
-  { href: "/dashboard/pos", label: "🛒 POS", roles: ALL },
-  { href: "/dashboard/orders", label: "Orders", roles: ALL },
-  { href: "/dashboard/products", label: "Products", roles: ALL },
-  { href: "/dashboard/categories", label: "Categories", roles: ALL },
-  { href: "/dashboard/reports", label: "Reports", roles: MANAGERS },
-  { href: "/dashboard/users", label: "Staff", roles: ["ADMIN"] },
-  { href: "/dashboard/settings", label: "Settings", roles: ["ADMIN"] },
+  { href: "/dashboard", key: "dashboard", roles: ALL },
+  { href: "/dashboard/pos", key: "pos", roles: ALL },
+  { href: "/dashboard/orders", key: "orders", roles: ALL },
+  { href: "/dashboard/products", key: "products", roles: ALL },
+  { href: "/dashboard/categories", key: "categories", roles: ALL },
+  { href: "/dashboard/reports", key: "reports", roles: MANAGERS },
+  { href: "/dashboard/users", key: "users", roles: ["ADMIN"] },
+  { href: "/dashboard/settings", key: "settings", roles: ["ADMIN"] },
 ];
 
 export default function DashboardNav() {
+  const t = useTranslations("nav");
   const me = useMe();
   const pathname = usePathname();
 
@@ -35,12 +38,13 @@ export default function DashboardNav() {
             href={l.href}
             className={active(l.href) ? "border-b-2 border-blue-600 text-blue-700" : "text-gray-700"}
           >
-            {l.label}
+            {t(l.key)}
           </Link>
         ))}
-      <Link href="/dashboard/account" className="ml-auto text-gray-500">
-        🔑 Change Password
-      </Link>
+      <div className="ml-auto flex items-center gap-4">
+        <Link href="/dashboard/account" className="text-gray-500">{t("changePassword")}</Link>
+        <LanguageSwitcher />
+      </div>
     </nav>
   );
 }

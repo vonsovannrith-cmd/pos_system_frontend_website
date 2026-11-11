@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api";
+import { imageSrc } from "@/lib/image";
 import { money, riel, round2 } from "@/lib/money";
 import { useSettings } from "@/lib/useSettings";
+import ProductThumb from "@/components/ProductThumb";
 import Receipt from "@/components/Receipt";
 import type { Category, HeldCart, HeldCartSummary, Order, PageResponse, Product } from "@/types";
 
@@ -15,6 +18,8 @@ const chip = (active: boolean) =>
   `rounded-full border px-3 py-1 text-sm ${active ? "bg-blue-600 text-white" : "bg-white"}`;
 
 export default function PosPage() {
+  const t = useTranslations("pos");
+  const tc = useTranslations("common");
   const settings = useSettings();
   const taxRate = settings?.taxRate ?? 0;
   const rate = settings?.usdToKhr ?? 0;
@@ -42,8 +47,8 @@ export default function PosPage() {
 
   // ---------- ទាញទំនិញ ----------
   useEffect(() => {
-    const t = setTimeout(() => setSearch(keyword), 400);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setSearch(keyword), 400);
+    return () => clearTimeout(timer);
   }, [keyword]);
 
   useEffect(() => {
@@ -60,7 +65,7 @@ export default function PosPage() {
       const res = await apiFetch<PageResponse<Product>>(`/api/products?${params}`);
       setProducts(res.content);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "មានបញ្ហា");
+      setError(e instanceof Error ? e.message : "Error");
     }
   }, [search, categoryId]);
 
@@ -72,7 +77,7 @@ export default function PosPage() {
     try {
       setHeld(await apiFetch<HeldCartSummary[]>("/api/held-carts"));
     } catch {
-      /* មិនបង្ហាញ Error: មុខងារបន្ថែម */
+      /* មុខងារបន្ថែម: មិនបង្ហាញ Error */
     }
   }, []);
 
@@ -124,15 +129,15 @@ export default function PosPage() {
         setKeyword("");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "មានបញ្ហា");
+      setError(err instanceof Error ? err.message : "Error");
     }
   }
 
   // ---------- Hold / Resume ----------
   async function holdCart() {
     if (cart.length === 0) return;
-    const label = prompt("ឈ្មោះសម្គាល់ (ស្រេចចិត្ត ឧ. អតិថិជនអាវក្រហម):");
-    if (label === null) return; // ចុច Cancel
+    const label = prompt(t("holdLabelPrompt"));
+    if (label === null) return;
     try {
       await apiFetch("/api/held-carts", {
         method: "POST",
@@ -144,7 +149,7 @@ export default function PosPage() {
       clearCart();
       loadHeld();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "មានបញ្ហា");
+      setError(e instanceof Error ? e.message : "Error");
     }
   }
 
@@ -152,21 +157,24 @@ export default function PosPage() {
     try {
       const data = await apiFetch<HeldCart>(`/api/held-carts/${h.id}/resume`, { method: "POST" });
 
-      // ពិនិត្យស្តុក/ស្ថានភាពទំនិញឡើងវិញ ព្រោះ Hold មិនបានរក្សាស្តុកទុក
       const lines: CartLine[] = [];
       const notes: string[] = [];
       for (const it of data.items) {
         const p = it.product;
         if (!p.active) {
-          notes.push(`${p.name}: ត្រូវបានបិទលក់`);
+          notes.push(t("noteInactive", { name: p.name }));
           continue;
         }
         if (p.stockQuantity < 1) {
-          notes.push(`${p.name}: អស់ស្តុក`);
+          notes.push(t("noteOutOfStock", { name: p.name }));
           continue;
         }
         const q = Math.min(it.quantity, p.stockQuantity);
-        if (q < it.quantity) notes.push(`${p.name}: ស្តុកនៅសល់ ${p.stockQuantity} (ពី ${it.quantity})`);
+        if (q < it.quantity) {
+          notes.push(t("noteReduced", {
+            name: p.name, stock: String(p.stockQuantity), wanted: String(it.quantity),
+          }));
+        }
         lines.push({ product: p, quantity: q });
       }
 
@@ -176,18 +184,19 @@ export default function PosPage() {
       setShowHeld(false);
       loadHeld();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "មានបញ្ហា");
+      setError(e instanceof Error ? e.message : "Error");
       loadHeld();
     }
   }
 
   async function discardHeld(h: HeldCartSummary) {
-    if (!confirm(`លុបកន្ត្រកដែលបានផ្អាក "${h.label ?? new Date(h.createdAt).toLocaleTimeString()}" ?`)) return;
+    const name = h.label ?? new Date(h.createdAt).toLocaleTimeString();
+    if (!confirm(t("discardConfirm", { name }))) return;
     try {
       await apiFetch(`/api/held-carts/${h.id}`, { method: "DELETE" });
       loadHeld();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "មានបញ្ហា");
+      setError(e instanceof Error ? e.message : "Error");
       loadHeld();
     }
   }
@@ -204,7 +213,6 @@ export default function PosPage() {
     return { subtotal, discount, tax, total };
   }, [cart, discountType, dv, taxRate]);
 
-  // USD → រៀល ជិតបំផុត 100៛ (ត្រូវនឹង Backend: HALF_UP)
   const totalKhr =
     rate > 0 ? Math.round((Math.round(totals.total * 100) * rate) / 10000) * 100 : 0;
 
@@ -224,7 +232,7 @@ export default function PosPage() {
 
   function chooseMethod(m: Method) {
     setMethod(m);
-    if (m !== "CASH") setCurrency("USD"); // KHR ប្រើបានតែ CASH
+    if (m !== "CASH") setCurrency("USD");
     setReceived("");
   }
 
@@ -253,7 +261,7 @@ export default function PosPage() {
       clearCart();
       loadProducts();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "មានបញ្ហា");
+      setError(e instanceof Error ? e.message : "Error");
       loadProducts();
     } finally {
       setPaying(false);
@@ -269,12 +277,12 @@ export default function PosPage() {
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           onKeyDown={onSearchKey}
-          placeholder="ស្វែងរក ឬស្កេន Barcode (Enter)"
+          placeholder={t("searchPlaceholder")}
           className="mb-3 w-full rounded border p-2"
         />
 
         <div className="mb-3 flex flex-wrap gap-2">
-          <button onClick={() => setCategoryId("")} className={chip(categoryId === "")}>ទាំងអស់</button>
+          <button onClick={() => setCategoryId("")} className={chip(categoryId === "")}>{tc("all")}</button>
           {categories.map((c) => (
             <button key={c.id} onClick={() => setCategoryId(String(c.id))} className={chip(categoryId === String(c.id))}>
               {c.name}
@@ -290,33 +298,36 @@ export default function PosPage() {
                 key={p.id}
                 disabled={out}
                 onClick={() => addToCart(p)}
-                className="rounded-xl border bg-white p-3 text-left shadow-sm hover:border-blue-500 disabled:opacity-40"
+                className="overflow-hidden rounded-xl border bg-white text-left shadow-sm hover:border-blue-500 disabled:opacity-40"
               >
-                <div className="font-semibold">{p.name}</div>
-                <div className="text-blue-600">{money(p.price)}</div>
-                <div className={`text-xs ${p.lowStock ? "text-red-600" : "text-gray-500"}`}>
-                  {out ? "អស់ស្តុក" : `ស្តុក: ${p.stockQuantity}`}
+                <ProductThumb src={imageSrc(p.imageUrl)} alt={p.name} className="h-24 w-full" />
+                <div className="p-3">
+                  <div className="font-semibold">{p.name}</div>
+                  <div className="text-blue-600">{money(p.price)}</div>
+                  <div className={`text-xs ${p.lowStock ? "text-red-600" : "text-gray-500"}`}>
+                    {out ? t("outOfStock") : t("stock", { count: String(p.stockQuantity) })}
+                  </div>
                 </div>
               </button>
             );
           })}
-          {products.length === 0 && <p className="col-span-full text-gray-500">មិនមានទំនិញទេ</p>}
+          {products.length === 0 && <p className="col-span-full text-gray-500">{t("noProducts")}</p>}
         </div>
       </section>
 
       {/* ===== ស្តាំ: កន្ត្រក ===== */}
       <aside className="h-fit rounded-xl bg-white p-4 shadow lg:sticky lg:top-4">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold">កន្ត្រក</h2>
+          <h2 className="text-lg font-bold">{t("cart")}</h2>
           <button onClick={() => setShowHeld(true)} className="rounded border px-3 py-1 text-sm">
-            📋 ផ្អាក ({held.length})
+            {t("heldButton", { count: String(held.length) })}
           </button>
         </div>
 
         {error && <div className="mb-3 rounded bg-red-100 p-2 text-sm text-red-700">{error}</div>}
         {notice && (
           <div className="mb-3 rounded bg-yellow-100 p-2 text-sm text-yellow-800">
-            ⚠ កែសម្រួលពេលបន្ត៖ {notice}
+            {t("resumeNotice", { notes: notice })}
           </div>
         )}
 
@@ -333,7 +344,7 @@ export default function PosPage() {
               <div className="w-20 text-right">{money(round2(l.product.price * l.quantity))}</div>
             </li>
           ))}
-          {cart.length === 0 && <li className="py-6 text-center text-gray-400">កន្ត្រកទទេ</li>}
+          {cart.length === 0 && <li className="py-6 text-center text-gray-400">{t("emptyCart")}</li>}
         </ul>
 
         {/* Discount */}
@@ -343,8 +354,8 @@ export default function PosPage() {
             onChange={(e) => setDiscountType(e.target.value as "PERCENT" | "AMOUNT")}
             className="rounded border p-2 text-sm"
           >
-            <option value="PERCENT">បញ្ចុះ %</option>
-            <option value="AMOUNT">បញ្ចុះ $</option>
+            <option value="PERCENT">{t("discountPercent")}</option>
+            <option value="AMOUNT">{t("discountAmount")}</option>
           </select>
           <input
             type="number" min="0" step="0.01"
@@ -354,19 +365,19 @@ export default function PosPage() {
             className="w-full rounded border p-2 text-sm"
           />
         </div>
-        {invalidDiscount && <p className="mb-2 text-xs text-red-600">ការបញ្ចុះតម្លៃមិនត្រឹមត្រូវ</p>}
+        {invalidDiscount && <p className="mb-2 text-xs text-red-600">{t("invalidDiscount")}</p>}
 
         {/* សរុប */}
         <div className="space-y-1 border-t pt-3 text-sm">
-          <div className="flex justify-between"><span>Subtotal</span><span>{money(totals.subtotal)}</span></div>
-          <div className="flex justify-between"><span>Discount</span><span>-{money(totals.discount)}</span></div>
-          <div className="flex justify-between"><span>VAT ({taxRate}%)</span><span>{money(totals.tax)}</span></div>
+          <div className="flex justify-between"><span>{t("subtotal")}</span><span>{money(totals.subtotal)}</span></div>
+          <div className="flex justify-between"><span>{t("discount")}</span><span>-{money(totals.discount)}</span></div>
+          <div className="flex justify-between"><span>{t("vat", { rate: String(taxRate) })}</span><span>{money(totals.tax)}</span></div>
           <div className="flex justify-between text-xl font-bold">
-            <span>សរុប</span><span>{money(totals.total)}</span>
+            <span>{t("total")}</span><span>{money(totals.total)}</span>
           </div>
           {rate > 0 && (
             <div className="flex justify-between text-gray-500">
-              <span>≈ រៀល (1$ = {rate.toLocaleString()}៛)</span>
+              <span>{t("approxKhr", { rate: rate.toLocaleString("en-US") })}</span>
               <span>{riel(totalKhr)}</span>
             </div>
           )}
@@ -399,7 +410,7 @@ export default function PosPage() {
                     currency === c ? "border-green-600 bg-green-50 font-semibold text-green-700" : ""
                   } disabled:opacity-40`}
                 >
-                  {c === "USD" ? "$ ដុល្លារ" : "៛ រៀល"}
+                  {c === "USD" ? t("currencyUsd") : t("currencyKhr")}
                 </button>
               ))}
             </div>
@@ -409,22 +420,21 @@ export default function PosPage() {
                 type="number" min="0" step={khrMode ? "100" : "0.01"}
                 value={received}
                 onChange={(e) => setReceived(e.target.value)}
-                placeholder={khrMode ? "ប្រាក់ដែលទទួល (៛)" : "ប្រាក់ដែលទទួល ($)"}
+                placeholder={khrMode ? t("receivedKhr") : t("receivedUsd")}
                 className="w-full rounded border p-2"
               />
-              <button
-                onClick={() => setReceived(String(due))}
-                className="whitespace-nowrap rounded border px-3 text-sm"
-              >
-                គ្រប់
+              <button onClick={() => setReceived(String(due))} className="whitespace-nowrap rounded border px-3 text-sm">
+                {t("exact")}
               </button>
             </div>
             {khrMode && cart.length > 0 && (
-              <p className="mt-1 text-xs text-gray-500">ត្រូវបង់: {riel(totalKhr)}</p>
+              <p className="mt-1 text-xs text-gray-500">{t("mustPay", { amount: riel(totalKhr) })}</p>
             )}
             {receivedNum > 0 && (
               <p className={`mt-1 text-sm ${change < 0 ? "text-red-600" : "text-green-700"}`}>
-                {change < 0 ? `នៅខ្វះ ${fmt(-change)}` : `អាប់: ${fmt(change)}`}
+                {change < 0
+                  ? t("shortBy", { amount: fmt(-change) })
+                  : t("changeDue", { amount: fmt(change) })}
               </p>
             )}
           </div>
@@ -435,16 +445,18 @@ export default function PosPage() {
           disabled={!canPay || paying}
           className="mt-4 w-full rounded bg-green-600 py-3 text-lg font-bold text-white disabled:opacity-40"
         >
-          {paying ? "កំពុងដំណើរការ..." : `បង់ប្រាក់ ${khrMode ? riel(totalKhr) : money(totals.total)}`}
+          {paying
+            ? t("processing")
+            : t("pay", { amount: khrMode ? riel(totalKhr) : money(totals.total) })}
         </button>
 
         {cart.length > 0 && (
           <div className="mt-2 flex gap-2">
             <button onClick={holdCart} className="flex-1 rounded border py-2 text-sm text-orange-700">
-              ⏸ ផ្អាកកន្ត្រក
+              {t("hold")}
             </button>
             <button onClick={clearCart} className="flex-1 rounded border py-2 text-sm text-gray-500">
-              សម្អាត
+              {t("clear")}
             </button>
           </div>
         )}
@@ -454,44 +466,46 @@ export default function PosPage() {
       {showHeld && (
         <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4">
           <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-lg">
-            <h2 className="mb-3 text-lg font-bold">កន្ត្រកដែលបានផ្អាក</h2>
+            <h2 className="mb-3 text-lg font-bold">{t("heldTitle")}</h2>
 
             {cart.length > 0 && (
-              <p className="mb-3 rounded bg-yellow-50 p-2 text-sm text-yellow-800">
-                កន្ត្រកបច្ចុប្បន្នមិនទទេ។ សូមបង់ប្រាក់ ផ្អាក ឬសម្អាតវាមុនពេលបន្ត
-              </p>
+              <p className="mb-3 rounded bg-yellow-50 p-2 text-sm text-yellow-800">{t("heldCartNotEmpty")}</p>
             )}
 
             <ul className="divide-y">
-              {held.map((h) => (
-                <li key={h.id} className="flex items-center justify-between gap-2 py-3 text-sm">
-                  <div>
-                    <div className="font-semibold">
-                      {h.label ?? `ផ្អាកម៉ោង ${new Date(h.createdAt).toLocaleTimeString()}`}
+              {held.map((h) => {
+                const time = new Date(h.createdAt).toLocaleTimeString();
+                return (
+                  <li key={h.id} className="flex items-center justify-between gap-2 py-3 text-sm">
+                    <div>
+                      <div className="font-semibold">{h.label ?? t("heldDefaultLabel", { time })}</div>
+                      <div className="text-gray-500">
+                        {t("heldMeta", {
+                          items: String(h.itemCount), units: String(h.totalQuantity), time,
+                        })}
+                      </div>
                     </div>
-                    <div className="text-gray-500">
-                      {h.itemCount} មុខ · {h.totalQuantity} ឯកតា ·{" "}
-                      {new Date(h.createdAt).toLocaleTimeString()}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => resume(h)}
+                        disabled={cart.length > 0}
+                        className="rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-40"
+                      >
+                        {t("resume")}
+                      </button>
+                      <button onClick={() => discardHeld(h)} className="rounded border px-3 py-1 text-red-600">
+                        {t("discard")}
+                      </button>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => resume(h)}
-                      disabled={cart.length > 0}
-                      className="rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-40"
-                    >
-                      បន្ត
-                    </button>
-                    <button onClick={() => discardHeld(h)} className="rounded border px-3 py-1 text-red-600">
-                      លុប
-                    </button>
-                  </div>
-                </li>
-              ))}
-              {held.length === 0 && <li className="py-6 text-center text-gray-400">មិនមានកន្ត្រកដែលបានផ្អាកទេ</li>}
+                  </li>
+                );
+              })}
+              {held.length === 0 && <li className="py-6 text-center text-gray-400">{t("noHeld")}</li>}
             </ul>
 
-            <button onClick={() => setShowHeld(false)} className="mt-4 w-full rounded border py-2">បិទ</button>
+            <button onClick={() => setShowHeld(false)} className="mt-4 w-full rounded border py-2">
+              {tc("close")}
+            </button>
           </div>
         </div>
       )}

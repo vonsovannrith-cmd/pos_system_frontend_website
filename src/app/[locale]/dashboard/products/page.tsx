@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api";
+import { imageSrc } from "@/lib/image";
+import { money } from "@/lib/money";
 import { useMe } from "@/lib/useMe";
 import ProductForm from "@/components/ProductForm";
+import ProductThumb from "@/components/ProductThumb";
 import type { Category, PageResponse, Product } from "@/types";
 
-const money = (n: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-
 export default function ProductsPage() {
+  const t = useTranslations("products");
+  const tc = useTranslations("common");
   const me = useMe();
   const canManage = me?.role === "ADMIN" || me?.role === "MANAGER";
 
@@ -20,10 +23,10 @@ export default function ProductsPage() {
   const [categoryId, setCategoryId] = useState("");
   const [page, setPage] = useState(0);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
 
-  // Debounce: Wait 400ms after typing stops before searching
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(keyword);
@@ -44,7 +47,7 @@ export default function ProductsPage() {
       setData(await apiFetch<PageResponse<Product>>(`/api/products?${params}`));
       setError("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error loading products");
+      setError(e instanceof Error ? e.message : "Error");
     }
   }, [page, search, categoryId]);
 
@@ -57,16 +60,16 @@ export default function ProductsPage() {
       await apiFetch(`/api/products/${p.id}/active?value=${!p.active}`, { method: "PATCH" });
       load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error toggling product active status");
+      setError(e instanceof Error ? e.message : "Error");
     }
   }
 
   async function stockIn(p: Product) {
-    const input = prompt(`Enter quantity to add to stock for "${p.name}"?`);
+    const input = prompt(t("stockPrompt", { name: p.name }));
     if (!input) return;
     const quantity = Number(input);
     if (!Number.isInteger(quantity) || quantity < 1) {
-      setError("Quantity must be a positive integer");
+      setError(t("invalidQty"));
       return;
     }
     try {
@@ -76,37 +79,35 @@ export default function ProductsPage() {
       });
       load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error adding stock");
+      setError(e instanceof Error ? e.message : "Error");
     }
   }
 
   return (
     <main className="mx-auto max-w-6xl p-8">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Products</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         {canManage && (
           <button
             onClick={() => { setEditing(null); setShowForm(true); }}
             className="rounded bg-blue-600 px-4 py-2 font-semibold text-white"
           >
-            + Add Product
+            {t("add")}
           </button>
         )}
       </div>
 
       <div className="mb-4 flex gap-3">
         <input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Search by Name / SKU / Barcode"
-          className="flex-1 rounded border p-2"
+          value={keyword} onChange={(e) => setKeyword(e.target.value)}
+          placeholder={t("searchPlaceholder")} className="flex-1 rounded border p-2"
         />
         <select
           value={categoryId}
           onChange={(e) => { setCategoryId(e.target.value); setPage(0); }}
           className="rounded border p-2"
         >
-          <option value="">All Categories</option>
+          <option value="">{t("allCategories")}</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
@@ -114,53 +115,52 @@ export default function ProductsPage() {
       </div>
 
       {error && <div className="mb-4 rounded bg-red-100 p-3 text-sm text-red-700">{error}</div>}
+      {notice && <div className="mb-4 rounded bg-yellow-100 p-3 text-sm text-yellow-800">{notice}</div>}
 
       <div className="overflow-x-auto rounded bg-white shadow">
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-100 text-gray-600">
             <tr>
-              <th className="p-3">SKU</th>
-              <th className="p-3">Name</th>
-              <th className="p-3">Category</th>
-              <th className="p-3 text-right">Price</th>
-              <th className="p-3 text-right">Stock</th>
-              <th className="p-3">Status</th>
-              {canManage && <th className="p-3">Actions</th>}
+              <th className="p-3">{t("colImage")}</th>
+              <th className="p-3">{t("colSku")}</th>
+              <th className="p-3">{t("colName")}</th>
+              <th className="p-3">{t("colCategory")}</th>
+              <th className="p-3 text-right">{t("colPrice")}</th>
+              <th className="p-3 text-right">{t("colStock")}</th>
+              <th className="p-3">{t("colStatus")}</th>
+              {canManage && <th className="p-3">{t("colActions")}</th>}
             </tr>
           </thead>
           <tbody>
             {data?.content.map((p) => (
               <tr key={p.id} className={`border-t ${p.active ? "" : "opacity-50"}`}>
+                <td className="p-2">
+                  <ProductThumb src={imageSrc(p.imageUrl)} alt={p.name} className="h-10 w-10 rounded" />
+                </td>
                 <td className="p-3 font-mono">{p.sku}</td>
                 <td className="p-3">{p.name}</td>
                 <td className="p-3">{p.categoryName ?? "—"}</td>
                 <td className="p-3 text-right">{money(p.price)}</td>
                 <td className="p-3 text-right">
-                  <span className={p.lowStock ? "font-bold text-red-600" : ""}>
-                    {p.stockQuantity}
-                  </span>
-                  {p.lowStock && <span className="ml-1 text-xs text-red-600">⚠ Low Stock</span>}
+                  <span className={p.lowStock ? "font-bold text-red-600" : ""}>{p.stockQuantity}</span>
+                  {p.lowStock && <span className="ml-1 text-xs text-red-600">{t("lowBadge")}</span>}
                 </td>
-                <td className="p-3">{p.active ? "Active" : "Inactive"}</td>
+                <td className="p-3">{p.active ? t("statusActive") : t("statusInactive")}</td>
                 {canManage && (
                   <td className="space-x-3 p-3">
                     <button onClick={() => { setEditing(p); setShowForm(true); }} className="text-blue-600">
-                      Edit
+                      {t("edit")}
                     </button>
-                    <button onClick={() => stockIn(p)} className="text-green-700">
-                      + Stock
-                    </button>
+                    <button onClick={() => stockIn(p)} className="text-green-700">{t("addStock")}</button>
                     <button onClick={() => toggleActive(p)} className="text-gray-600">
-                      {p.active ? "Deactivate" : "Activate"}
+                      {p.active ? t("deactivate") : t("activate")}
                     </button>
                   </td>
                 )}
               </tr>
             ))}
             {data && data.content.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-6 text-center text-gray-500">No products found</td>
-              </tr>
+              <tr><td colSpan={8} className="p-6 text-center text-gray-500">{t("empty")}</td></tr>
             )}
           </tbody>
         </table>
@@ -168,21 +168,17 @@ export default function ProductsPage() {
 
       {data && data.totalPages > 1 && (
         <div className="mt-4 flex items-center justify-center gap-4 text-sm">
-          <button
-            disabled={page === 0}
-            onClick={() => setPage(page - 1)}
-            className="rounded border px-3 py-1 disabled:opacity-40"
-          >
-            ← Previous
-          </button>
-          <span>Page {data.page + 1} / {data.totalPages} (Total {data.totalElements})</span>
-          <button
-            disabled={page + 1 >= data.totalPages}
-            onClick={() => setPage(page + 1)}
-            className="rounded border px-3 py-1 disabled:opacity-40"
-          >
-            Next →
-          </button>
+          <button disabled={page === 0} onClick={() => setPage(page - 1)}
+            className="rounded border px-3 py-1 disabled:opacity-40">{tc("previous")}</button>
+          <span>
+            {tc("page", {
+              current: String(data.page + 1),
+              total: String(data.totalPages),
+              count: String(data.totalElements),
+            })}
+          </span>
+          <button disabled={page + 1 >= data.totalPages} onClick={() => setPage(page + 1)}
+            className="rounded border px-3 py-1 disabled:opacity-40">{tc("next")}</button>
         </div>
       )}
 
@@ -191,7 +187,11 @@ export default function ProductsPage() {
           product={editing}
           categories={categories}
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); load(); }}
+          onSaved={(warning) => {
+            setShowForm(false);
+            setNotice(warning ?? "");
+            load();
+          }}
         />
       )}
     </main>

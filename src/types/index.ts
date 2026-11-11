@@ -15,6 +15,7 @@ export type Product = {
   active: boolean;
   categoryId: number | null;
   categoryName: string | null;
+  imageUrl: string | null;  
 };
 
 export type PageResponse<T> = {
