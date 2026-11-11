@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { money } from "@/lib/money";
+import { money, riel } from "@/lib/money";
 import type { Order } from "@/types";
 import { useSettings } from "@/lib/useSettings";
+
 
 type Props = {
   order: Order;
@@ -71,10 +72,29 @@ export default function Receipt({
             label={`VAT (${order.taxRate}%)`}
             value={money(order.taxAmount)}
           />
-          <div className="mt-1 flex justify-between text-base font-bold">
+                    <div className="mt-1 flex justify-between text-base font-bold">
             <span>TOTAL</span>
             <span>{money(order.total)}</span>
           </div>
+          {order.totalKhr !== null && order.exchangeRate !== null && (
+            <div className="flex justify-between text-gray-600">
+              <span>≈ KHR (1$={order.exchangeRate.toLocaleString()}៛)</span>
+              <span>{riel(order.totalKhr)}</span>
+            </div>
+          )}
+          <hr className="my-2 border-dashed" />
+
+          {order.paymentCurrency === "KHR" ? (
+            <>
+              <Row label={`Paid (${order.paymentMethod}, KHR)`} value={riel(order.amountPaid)} />
+              <Row label="Change" value={riel(order.changeAmount)} />
+            </>
+          ) : (
+            <>
+              <Row label={`Paid (${order.paymentMethod})`} value={money(order.amountPaid)} />
+              <Row label="Change" value={money(order.changeAmount)} />
+            </>
+          )}
           <hr className="my-2 border-dashed" />
 
           <Row

@@ -52,6 +52,9 @@ export type Order = {
   cancelReason: string | null;
   cancelledBy: string | null;
   cancelledAt: string | null;
+  paymentCurrency: string;
+  exchangeRate: number | null;
+  totalKhr: number | null;
 };
 
 export type OrderSummary = {
@@ -108,4 +111,18 @@ export type AppUser = {
   role: string;
   active: boolean;
   createdAt: string;
+};
+
+export type HeldCartSummary = {
+  id: number;
+  label: string | null;
+  itemCount: number;
+  totalQuantity: number;
+  createdAt: string;
+};
+
+export type HeldCart = {
+  id: number;
+  label: string | null;
+  items: { product: Product; quantity: number }[];
 };
