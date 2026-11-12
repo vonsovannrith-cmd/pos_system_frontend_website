@@ -1,9 +1,13 @@
-// Same-origin: Next.js Rewrite forwards /api/* to Backend (see next.config.ts)[cite: 6]
+// Same-origin: Next.js Rewrite forwards /api/* to Spring Boot Backend.
 export const API_URL = "";
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
     super(message);
+    this.name = "ApiError";
   }
 }
 
@@ -11,71 +15,191 @@ const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
-  const found = document.cookie.split("; ").find((c) => c.startsWith(`${name}=`));
-  return found ? decodeURIComponent(found.slice(name.length + 1)) : null;
+
+  const found = document.cookie
+    .split("; ")
+    .find((cookie) => cookie.startsWith(`${name}=`));
+
+  if (!found) return null;
+
+  try {
+    return decodeURIComponent(found.slice(name.length + 1));
+  } catch {
+    return null;
+  }
 }
 
-/** Mutating requests must include the X-XSRF-TOKEN header copied from the XSRF-TOKEN cookie */
-async function csrfHeader(method: string): Promise<Record<string, string>> {
-  if (!UNSAFE.has(method)) return {};
+/**
+ * Get CSRF token for requests that modify data.
+ *
+ * Spring Boot sets the XSRF-TOKEN cookie through:
+ * GET /api/auth/csrf
+ */
+async function csrfHeader(method: string): Promise<Headers> {
+  const headers = new Headers();
+
+  if (!UNSAFE.has(method)) {
+    return headers;
+  }
+
   let token = readCookie("XSRF-TOKEN");
+
+  // Request a CSRF cookie if it does not exist.
   if (!token) {
-    await fetch("/api/health");          // Server sets XSRF-TOKEN cookie in response
+    const response = await fetch("/api/auth/csrf", {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        "Unable to initialize CSRF protection",
+      );
+    }
+
+    // Read the cookie after the server response.
     token = readCookie("XSRF-TOKEN");
   }
-  return token ? { "X-XSRF-TOKEN": token } : {};
+
+  // Never send an unsafe request without a CSRF token.
+  if (!token) {
+    throw new Error(
+      "CSRF token is missing. Please refresh the page and try again.",
+    );
+  }
+
+  headers.set("X-XSRF-TOKEN", token);
+
+  return headers;
 }
 
+/**
+ * Handle API errors.
+ */
 async function fail(res: Response, path: string): Promise<never> {
-  // Session expired (httpOnly cookie: JS cannot see expiration) -> redirect to login
-  if (res.status === 401 && !path.startsWith("/api/auth/login") && typeof window !== "undefined") {
+  // Redirect when authentication expires.
+  if (
+    res.status === 401 &&
+    !path.startsWith("/api/auth/login") &&
+    typeof window !== "undefined"
+  ) {
     window.location.href = "/login";
   }
-  let message = res.status === 403 ? "You do not have permission to perform this action" : "An error occurred";
+
+  let message =
+    res.status === 403
+      ? "You do not have permission to perform this action"
+      : "An error occurred";
+
   try {
     const body = await res.json();
     message = body.message ?? message;
-  } catch {}
+  } catch {
+    // Keep the default error message.
+  }
+
   throw new ApiError(res.status, message);
 }
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+/**
+ * General API request.
+ */
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   const method = (options.method ?? "GET").toUpperCase();
+
+  // Preserve custom headers.
+  const headers = new Headers(options.headers);
+
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  // Add CSRF header for POST, PUT, PATCH and DELETE.
+  const csrfHeaders = await csrfHeader(method);
+
+  csrfHeaders.forEach((value, key) => {
+    headers.set(key, value);
+  });
+
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    method,
     credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...(await csrfHeader(method)),
-      ...(options.headers as Record<string, string>),
-    },
+    headers,
   });
-  if (!res.ok) return fail(res, path);
-  if (res.status === 204) return undefined as T;
+
+  if (!res.ok) {
+    return fail(res, path);
+  }
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json() as Promise<T>;
 }
 
-/** Upload files (multipart). Do not set Content-Type: Browser will set boundary automatically */
-export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+/**
+ * Upload files using multipart/form-data.
+ *
+ * Do not set Content-Type manually.
+ * Browser automatically adds the multipart boundary.
+ */
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+): Promise<T> {
+  const headers = await csrfHeader("POST");
+
   const res = await fetch(`${API_URL}${path}`, {
     method: "POST",
     credentials: "same-origin",
-    headers: await csrfHeader("POST"),
+    headers,
     body: formData,
   });
-  if (!res.ok) return fail(res, path);
+
+  if (!res.ok) {
+    return fail(res, path);
+  }
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json() as Promise<T>;
 }
 
-export async function apiDownload(path: string, filename: string): Promise<void> {
-  const res = await fetch(`${API_URL}${path}`, { credentials: "same-origin" });
-  if (!res.ok) return fail(res, path);
+/**
+ * Download a file from the backend.
+ */
+export async function apiDownload(
+  path: string,
+  filename: string,
+): Promise<void> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "GET",
+    credentials: "same-origin",
+  });
+
+  if (!res.ok) {
+    return fail(res, path);
+  }
 
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
+
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+
+  document.body.appendChild(a);
   a.click();
+  a.remove();
+
   URL.revokeObjectURL(url);
 }
