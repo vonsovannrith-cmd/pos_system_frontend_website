@@ -146,11 +146,11 @@ export default function Receipt({
               <div className="flex justify-between text-gray-600">
 
                 <span>
-                  {item.quantity} × {money(item.unitPrice)}
+                  {item.quantity} × {formatAmount(item.unitPrice)}
                 </span>
 
                 <span>
-                  {money(item.lineTotal)}
+                  {formatAmount(item.lineTotal)}
                 </span>
 
               </div>
@@ -164,7 +164,7 @@ export default function Receipt({
 
           <Row
             label={t("subtotal")}
-            value={money(order.subtotal)}
+            value={formatAmount(order.subtotal)}
           />
 
           {/* Discount */}
@@ -172,7 +172,7 @@ export default function Receipt({
           {order.discountAmount > 0 && (
             <Row
               label={t("discount")}
-              value={`-${money(order.discountAmount)}`}
+              value={`-${formatAmount(order.discountAmount)}`}
             />
           )}
 
@@ -182,7 +182,7 @@ export default function Receipt({
             label={t("vat", {
               rate: String(order.taxRate),
             })}
-            value={money(order.taxAmount)}
+            value={formatAmount(order.taxAmount)}
           />
 
           {/* Total */}
@@ -194,7 +194,7 @@ export default function Receipt({
             </span>
 
             <span>
-              {money(order.total)}
+              {formatAmount(order.total)}
             </span>
 
           </div>

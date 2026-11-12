@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { apiDownload, apiFetch } from "@/lib/api";
 import { toDateInput } from "@/lib/date";
@@ -34,12 +34,15 @@ export default function ReportsPage() {
 
   const validRange = Boolean(from && to && from <= to);
 
+  const visibleReport = useMemo(
+  () => (privileged && validRange ? report : null),
+  [privileged, validRange, report]
+);
+
+  // Load sales report
   // Load sales report
   useEffect(() => {
     if (!privileged || !validRange) {
-      setReport(null);
-      setLoading(false);
-      setError("");
       return;
     }
 
@@ -48,13 +51,12 @@ export default function ReportsPage() {
     async function loadReport() {
       setLoading(true);
       setError("");
-      setReport(null);
 
       try {
         const params = new URLSearchParams({ from, to });
 
         const data = await apiFetch<SalesReport>(
-          `/api/reports/sales?${params.toString()}`,
+          `/api/reports/sales?${params.toString()}`
         );
 
         if (!cancelled) {
@@ -64,7 +66,7 @@ export default function ReportsPage() {
         if (!cancelled) {
           setReport(null);
           setError(
-            err instanceof Error ? err.message : t("loadError"),
+            err instanceof Error ? err.message : t("loadError")
           );
         }
       } finally {
@@ -74,7 +76,7 @@ export default function ReportsPage() {
       }
     }
 
-    loadReport();
+    void loadReport();
 
     return () => {
       cancelled = true;

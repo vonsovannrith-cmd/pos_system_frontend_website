@@ -158,8 +158,50 @@ export default function PosPage() {
   }, [search, categoryId, t]);
 
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    let active = true;
+
+    async function fetchProducts() {
+      try {
+        const params = new URLSearchParams({
+          page: "0",
+          size: "60",
+          sort: "name,asc",
+          activeOnly: "true",
+        });
+
+        if (search) {
+          params.set("keyword", search);
+        }
+
+        if (categoryId) {
+          params.set("categoryId", categoryId);
+        }
+
+        const result = await apiFetch<PageResponse<Product>>(
+          `/api/products?${params.toString()}`
+        );
+
+        if (!active) return;
+
+        setProducts(result.content);
+        setError("");
+      } catch (e) {
+        if (!active) return;
+
+        setError(
+          e instanceof Error
+            ? e.message
+            : t("genericError")
+        );
+      }
+    }
+
+    void fetchProducts();
+
+    return () => {
+      active = false;
+    };
+  }, [search, categoryId, t]);
 
   // ---------- Load Held Carts ----------
 
@@ -176,8 +218,28 @@ export default function PosPage() {
   }, []);
 
   useEffect(() => {
-    loadHeld();
-  }, [loadHeld]);
+    let active = true;
+
+    async function fetchHeldCarts() {
+      try {
+        const result = await apiFetch<HeldCartSummary[]>(
+          "/api/held-carts"
+        );
+
+        if (!active) return;
+
+        setHeld(result);
+      } catch {
+        // Held carts are optional.
+      }
+    }
+
+    void fetchHeldCarts();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // ---------- Add Product To Cart ----------
 

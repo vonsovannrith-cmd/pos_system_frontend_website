@@ -21,8 +21,6 @@ export default function CategoriesPage() {
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
-
     try {
       const data = await apiFetch<Category[]>("/api/categories");
       setItems(data);
@@ -37,8 +35,35 @@ export default function CategoriesPage() {
   }, [t]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+
+    async function fetchCategories() {
+      try {
+        const data = await apiFetch<Category[]>("/api/categories");
+
+        if (active) {
+          setItems(data);
+          setError("");
+        }
+      } catch (e) {
+        if (active) {
+          setError(
+            e instanceof Error ? e.message : t("genericError")
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void fetchCategories();
+
+    return () => {
+      active = false;
+    };
+  }, [t]);
 
   async function add(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

@@ -40,10 +40,33 @@ export default function UsersPage() {
   }, [t]);
 
   useEffect(() => {
-    if (me?.role === "ADMIN") {
-      load();
+    if (me?.role !== "ADMIN") return;
+
+    let active = true;
+
+    async function fetchUsers() {
+      try {
+        const result = await apiFetch<AppUser[]>("/api/users");
+
+        if (!active) return;
+
+        setUsers(result);
+        setError("");
+      } catch (e) {
+        if (!active) return;
+
+        setError(
+          e instanceof Error ? e.message : t("genericError")
+        );
+      }
     }
-  }, [me, load]);
+
+    void fetchUsers();
+
+    return () => {
+      active = false;
+    };
+  }, [me?.role, t]);
 
   // Enable / Disable user
   async function toggleActive(u: AppUser) {

@@ -77,8 +77,48 @@ export default function ProductsPage() {
   }, [page, search, categoryId, t]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let active = true;
+
+    async function fetchProducts() {
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          size: "10",
+          sort: "name,asc",
+        });
+
+        if (search) {
+          params.set("keyword", search);
+        }
+
+        if (categoryId) {
+          params.set("categoryId", categoryId);
+        }
+
+        const result = await apiFetch<PageResponse<Product>>(
+          `/api/products?${params}`,
+        );
+
+        // Update state only if this effect is still active
+        if (!active) return;
+
+        setData(result);
+        setError("");
+      } catch (e) {
+        if (!active) return;
+
+        setError(
+          e instanceof Error ? e.message : t("genericError"),
+        );
+      }
+    }
+
+    void fetchProducts();
+
+    return () => {
+      active = false;
+    };
+  }, [page, search, categoryId, t]);
 
   // Activate / Deactivate product
   async function toggleActive(p: Product) {

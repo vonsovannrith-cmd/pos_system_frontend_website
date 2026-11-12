@@ -85,7 +85,7 @@ async function fail(res: Response, path: string): Promise<never> {
     !path.startsWith("/api/auth/login") &&
     typeof window !== "undefined"
   ) {
-    window.location.href = "/login";
+    window.location.replace("/login");
   }
 
   let message =
