@@ -1,8 +1,17 @@
+
 /* eslint-disable @next/next/no-img-element */
 
-type Props = { src: string | null; alt: string; className?: string };
+type Props = {
+  src: string | null;
+  alt: string;
+  className?: string;
+};
 
-export default function ProductThumb({ src, alt, className = "" }: Props) {
+export default function ProductThumb({
+  src,
+  alt,
+  className = "",
+}: Props) {
   if (!src) {
     return (
       <div
@@ -14,5 +23,16 @@ export default function ProductThumb({ src, alt, className = "" }: Props) {
       </div>
     );
   }
-  return <img src={src} alt={alt} loading="lazy" className={`object-cover ${className}`} />;
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      onError={(event) => {
+        event.currentTarget.style.display = "none";
+      }}
+      className={`object-cover ${className}`}
+    />
+  );
 }

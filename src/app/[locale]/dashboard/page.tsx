@@ -1,21 +1,18 @@
+
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
+
 import { apiFetch } from "@/lib/api";
 import { money } from "@/lib/money";
 import { useMe } from "@/lib/useMe";
 import SalesChart from "@/components/SalesChart";
+
 import type { ChartPoint, Dashboard } from "@/types";
 
 type Period = "DAY" | "WEEK" | "MONTH";
-
-const periodLabel: Record<Period, string> = {
-  DAY: "30 Days",
-  WEEK: "12 Weeks",
-  MONTH: "12 Months",
-};
 
 function Stat({
   title,
@@ -31,6 +28,7 @@ function Stat({
   return (
     <div className="rounded-xl bg-white p-4 shadow">
       <div className="text-sm text-gray-500">{title}</div>
+
       <div
         className={`mt-1 text-2xl font-bold ${
           danger ? "text-red-600" : ""
@@ -38,13 +36,20 @@ function Stat({
       >
         {value}
       </div>
-      {sub && <div className="text-xs text-gray-500">{sub}</div>}
+
+      {sub && (
+        <div className="text-xs text-gray-500">
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
 
 export default function DashboardPage() {
   const router = useRouter();
+  const t = useTranslations("dashboard");
+
   const me = useMe();
 
   const privileged =
@@ -53,9 +58,16 @@ export default function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [chart, setChart] = useState<ChartPoint[]>([]);
   const [period, setPeriod] = useState<Period>("DAY");
+
   const [error, setError] = useState("");
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [loadingChart, setLoadingChart] = useState(false);
+
+  const periodLabels: Record<Period, string> = {
+    DAY: t("days30"),
+    WEEK: t("weeks12"),
+    MONTH: t("months12"),
+  };
 
   // Load dashboard data
   useEffect(() => {
@@ -78,7 +90,9 @@ export default function DashboardPage() {
       } catch (e) {
         if (!cancelled) {
           setError(
-            e instanceof Error ? e.message : "Error loading dashboard data"
+            e instanceof Error
+              ? e.message
+              : t("errorDashboard")
           );
         }
       } finally {
@@ -93,7 +107,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [privileged]);
+  }, [privileged, t]);
 
   // Load sales chart
   useEffect(() => {
@@ -115,7 +129,9 @@ export default function DashboardPage() {
       } catch (e) {
         if (!cancelled) {
           setError(
-            e instanceof Error ? e.message : "Error loading chart data"
+            e instanceof Error
+              ? e.message
+              : t("errorChart")
           );
         }
       } finally {
@@ -130,26 +146,36 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [privileged, period]);
+  }, [privileged, period, t]);
 
-  function logout() {
-    localStorage.removeItem("token");
-    router.replace("/login");
-  }
+  async function logout() {
+      try {
+        await apiFetch("/api/auth/logout", { method: "POST" });   // Server លុប Cookie
+      } finally {
+        router.replace("/login");
+      }
+    }
 
   if (!me) {
-    return <p className="p-8">Loading...</p>;
+    return (
+      <p className="p-8">
+        {t("loading")}
+      </p>
+    );
   }
 
   return (
     <main className="mx-auto max-w-6xl p-8">
+
+      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            Welcome, {me.fullName} 👋
+            {t("welcome", { name: me.fullName })}
           </h1>
+
           <p className="text-sm text-gray-600">
-            Role: <b>{me.role}</b> | {me.email}
+            {t("role")}: <b>{me.role}</b> | {me.email}
           </p>
         </div>
 
@@ -157,71 +183,81 @@ export default function DashboardPage() {
           onClick={logout}
           className="rounded bg-red-600 px-4 py-2 text-white"
         >
-          Logout
+          {t("logout")}
         </button>
       </div>
 
+      {/* Cashier POS Button */}
       {!privileged && (
         <Link
           href="/dashboard/pos"
           className="inline-block rounded bg-green-600 px-6 py-3 text-lg font-bold text-white"
         >
-          🛒 Start POS
+          {t("startPos")}
         </Link>
       )}
 
+      {/* Admin / Manager Dashboard */}
       {privileged && (
         <>
+          {/* Error */}
           {error && (
             <div className="mb-4 rounded bg-red-100 p-3 text-sm text-red-700">
               {error}
             </div>
           )}
 
+          {/* Loading */}
           {loadingDashboard && (
             <p className="mb-4 text-gray-500">
-              Loading dashboard data...
+              {t("loadingData")}
             </p>
           )}
 
+          {/* Statistics */}
           {data && (
             <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+
               <Stat
-                title="Today's Sales"
+                title={t("todaySales")}
                 value={money(data.today.revenue)}
-                sub={`${data.today.orderCount} Orders`}
+                sub={`${data.today.orderCount} ${t("orders")}`}
               />
 
               <Stat
-                title="This Month's Sales"
+                title={t("monthSales")}
                 value={money(data.month.revenue)}
-                sub={`${data.month.orderCount} Orders`}
+                sub={`${data.month.orderCount} ${t("orders")}`}
               />
 
               <Stat
-                title="This Month's VAT"
+                title={t("monthVat")}
                 value={money(data.month.tax)}
               />
 
               <Link href="/dashboard/products">
                 <Stat
-                  title="Low Stock Items"
+                  title={t("lowStock")}
                   value={String(data.lowStockCount)}
-                  sub="Click to view"
+                  sub={t("clickToView")}
                   danger={data.lowStockCount > 0}
                 />
               </Link>
+
             </div>
           )}
 
+          {/* Sales Chart */}
           <div className="mb-6 rounded-xl bg-white p-4 shadow">
+
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+
               <h2 className="font-bold">
-                Sales ({periodLabel[period]})
+                {t("sales")} ({periodLabels[period]})
               </h2>
 
               <div className="flex gap-1">
-                {(Object.keys(periodLabel) as Period[]).map((p) => (
+                {(Object.keys(periodLabels) as Period[]).map((p) => (
                   <button
                     key={p}
                     onClick={() => setPeriod(p)}
@@ -231,33 +267,41 @@ export default function DashboardPage() {
                         : "border"
                     }`}
                   >
-                    {periodLabel[p]}
+                    {periodLabels[p]}
                   </button>
                 ))}
               </div>
+
             </div>
 
             {loadingChart ? (
               <p className="py-8 text-center text-gray-500">
-                Loading chart...
+                {t("loadingChart")}
               </p>
             ) : (
               <SalesChart points={chart} />
             )}
+
           </div>
 
+          {/* Top Selling Products */}
           <div className="rounded-xl bg-white p-4 shadow">
+
             <h2 className="mb-3 font-bold">
-              Top Selling Products (Last 7 Days)
+              {t("topProducts")}
             </h2>
 
             <table className="w-full text-left text-sm">
               <thead className="text-gray-500">
                 <tr>
                   <th className="py-1">#</th>
-                  <th>Product</th>
-                  <th className="text-right">Quantity</th>
-                  <th className="text-right">Sales</th>
+                  <th>{t("product")}</th>
+                  <th className="text-right">
+                    {t("quantity")}
+                  </th>
+                  <th className="text-right">
+                    {t("totalSales")}
+                  </th>
                 </tr>
               </thead>
 
@@ -265,8 +309,13 @@ export default function DashboardPage() {
                 {data?.topProducts.map((p, i) => (
                   <tr key={p.productId} className="border-t">
                     <td className="py-2">{i + 1}</td>
+
                     <td>{p.productName}</td>
-                    <td className="text-right">{p.quantity}</td>
+
+                    <td className="text-right">
+                      {p.quantity}
+                    </td>
+
                     <td className="text-right">
                       {money(p.revenue)}
                     </td>
@@ -279,15 +328,17 @@ export default function DashboardPage() {
                       colSpan={4}
                       className="py-4 text-center text-gray-500"
                     >
-                      No sales yet
+                      {t("noSales")}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+
           </div>
         </>
       )}
+
     </main>
   );
 }

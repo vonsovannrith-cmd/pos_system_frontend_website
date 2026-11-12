@@ -1,13 +1,8 @@
 
 import type { Metadata } from "next";
-import { Google_Sans_Flex, Kantumruy_Pro } from "next/font/google";
-import "./globals.css";
+import { Kantumruy_Pro } from "next/font/google";
 
-const googleSans = Google_Sans_Flex({
-  variable: "--font-google-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
+import "./globals.css";
 
 const kantumruy = Kantumruy_Pro({
   variable: "--font-kantumruy",
@@ -27,9 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="km">
-      <body
-        className={`${googleSans.variable} ${kantumruy.variable} antialiased`}
-      >
+      <body className={`${kantumruy.variable} antialiased`}>
         {children}
       </body>
     </html>

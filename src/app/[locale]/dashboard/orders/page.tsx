@@ -1,11 +1,19 @@
+
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+
 import { apiFetch } from "@/lib/api";
 import { money } from "@/lib/money";
 import { useMe } from "@/lib/useMe";
 import Receipt from "@/components/Receipt";
-import type { Order, OrderSummary, PageResponse } from "@/types";
+
+import type {
+  Order,
+  OrderSummary,
+  PageResponse,
+} from "@/types";
 
 const statusStyle: Record<string, string> = {
   COMPLETED: "bg-green-100 text-green-700",
@@ -33,6 +41,9 @@ const isToday = (iso: string) => {
 };
 
 export default function OrdersPage() {
+  const t = useTranslations("orders");
+  const locale = useLocale();
+
   const me = useMe();
 
   const privileged =
@@ -74,48 +85,6 @@ export default function OrdersPage() {
 
   // ---------- Load Orders ----------
 
-  const load = useCallback(async () => {
-    if (!validDateRange) {
-      setData(null);
-      setError("Start date cannot be later than end date");
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        size: "10",
-      });
-
-      Object.entries(query).forEach(([key, value]) => {
-        // Cashier filter for Admin and Manager only
-        if (value && (key !== "cashier" || privileged)) {
-          params.set(key, value);
-        }
-      });
-
-      const result = await apiFetch<PageResponse<OrderSummary>>(
-        `/api/orders?${params.toString()}`,
-      );
-
-      setData(result);
-    } catch (err) {
-      setData(null);
-
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load sales history",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [page, query, privileged, validDateRange]);
-
   useEffect(() => {
     if (!me) return;
 
@@ -124,7 +93,7 @@ export default function OrdersPage() {
     async function fetchOrders() {
       if (!validDateRange) {
         setData(null);
-        setError("Start date cannot be later than end date");
+        setError(t("errors.invalidDateRange"));
         setLoading(false);
         return;
       }
@@ -154,10 +123,11 @@ export default function OrdersPage() {
       } catch (err) {
         if (!cancelled) {
           setData(null);
+
           setError(
             err instanceof Error
               ? err.message
-              : "Unable to load sales history",
+              : t("errors.loadOrders"),
           );
         }
       } finally {
@@ -172,7 +142,15 @@ export default function OrdersPage() {
     return () => {
       cancelled = true;
     };
-  }, [me, page, query, privileged, refreshKey, validDateRange]);
+  }, [
+    me,
+    page,
+    query,
+    privileged,
+    refreshKey,
+    validDateRange,
+    t,
+  ]);
 
   // ---------- Handle Filter Changes ----------
 
@@ -204,7 +182,7 @@ export default function OrdersPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "Unable to display receipt",
+          : t("errors.viewReceipt"),
       );
     } finally {
       setViewing(false);
@@ -217,14 +195,14 @@ export default function OrdersPage() {
     if (!selected || actionLoading) return;
 
     if (type === "void" && !isToday(selected.createdAt)) {
-      setError("Cannot void orders from previous days");
+      setError(t("errors.cannotVoidPreviousDay"));
       return;
     }
 
     const reason = window.prompt(
       type === "void"
-        ? "Please enter the void reason:"
-        : "Please enter the refund reason:",
+        ? t("prompts.voidReason")
+        : t("prompts.refundReason"),
     );
 
     if (!reason?.trim()) return;
@@ -251,18 +229,22 @@ export default function OrdersPage() {
       setError(
         err instanceof Error
           ? err.message
-          : `Unable to ${type} order`,
+          : type === "void"
+            ? t("errors.voidOrder")
+            : t("errors.refundOrder"),
       );
     } finally {
       setActionLoading(false);
     }
   }
 
-  // ---------- Loading / Authorization ----------
+  // ---------- Loading User Information ----------
 
   if (!me) {
     return (
-      <p className="p-8">Loading user information...</p>
+      <p className="p-8">
+        {t("loadingUser")}
+      </p>
     );
   }
 
@@ -272,10 +254,10 @@ export default function OrdersPage() {
     <main className="mx-auto max-w-6xl p-4 sm:p-8">
 
       <h1 className="mb-4 text-2xl font-bold">
-        Sales History{" "}
+        {t("title")}{" "}
         {!privileged && (
           <span className="text-sm font-normal text-gray-500">
-            (My Orders)
+            ({t("myOrders")})
           </span>
         )}
       </h1>
@@ -286,7 +268,7 @@ export default function OrdersPage() {
 
         <input
           className={`${input} w-52`}
-          placeholder="Receipt Number"
+          placeholder={t("filters.receiptNumber")}
           value={filters.keyword}
           onChange={(e) =>
             updateFilter("keyword", e.target.value)
@@ -294,7 +276,7 @@ export default function OrdersPage() {
         />
 
         <label className="text-xs text-gray-500">
-          From
+          {t("filters.from")}
           <input
             type="date"
             className={`${input} block`}
@@ -307,7 +289,7 @@ export default function OrdersPage() {
         </label>
 
         <label className="text-xs text-gray-500">
-          To
+          {t("filters.to")}
           <input
             type="date"
             className={`${input} block`}
@@ -326,10 +308,18 @@ export default function OrdersPage() {
             updateFilter("paymentMethod", e.target.value)
           }
         >
-          <option value="">All Payment Methods</option>
-          <option value="CASH">CASH</option>
-          <option value="KHQR">KHQR</option>
-          <option value="CARD">CARD</option>
+          <option value="">
+            {t("filters.allPaymentMethods")}
+          </option>
+          <option value="CASH">
+            {t("paymentMethods.CASH")}
+          </option>
+          <option value="KHQR">
+            {t("paymentMethods.KHQR")}
+          </option>
+          <option value="CARD">
+            {t("paymentMethods.CARD")}
+          </option>
         </select>
 
         <select
@@ -339,16 +329,24 @@ export default function OrdersPage() {
             updateFilter("status", e.target.value)
           }
         >
-          <option value="">All Statuses</option>
-          <option value="COMPLETED">COMPLETED</option>
-          <option value="VOIDED">VOIDED</option>
-          <option value="REFUNDED">REFUNDED</option>
+          <option value="">
+            {t("filters.allStatuses")}
+          </option>
+          <option value="COMPLETED">
+            {t("statuses.COMPLETED")}
+          </option>
+          <option value="VOIDED">
+            {t("statuses.VOIDED")}
+          </option>
+          <option value="REFUNDED">
+            {t("statuses.REFUNDED")}
+          </option>
         </select>
 
         {privileged && (
           <input
             className={`${input} w-52`}
-            placeholder="Cashier Email"
+            placeholder={t("filters.cashierEmail")}
             value={filters.cashier}
             onChange={(e) =>
               updateFilter("cashier", e.target.value)
@@ -361,7 +359,7 @@ export default function OrdersPage() {
           onClick={clearFilters}
           className="text-sm text-gray-500 underline"
         >
-          Clear Filters
+          {t("filters.clear")}
         </button>
       </div>
 
@@ -380,7 +378,7 @@ export default function OrdersPage() {
 
       {loading && (
         <p className="mb-3 text-sm text-gray-500">
-          Loading sales history...
+          {t("loadingOrders")}
         </p>
       )}
 
@@ -391,13 +389,13 @@ export default function OrdersPage() {
 
           <thead className="bg-gray-100 text-gray-600">
             <tr>
-              <th className="p-3">Receipt No.</th>
-              <th className="p-3">Date</th>
-              <th className="p-3">Cashier</th>
-              <th className="p-3">Payment</th>
-              <th className="p-3 text-right">Total</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Actions</th>
+              <th className="p-3">{t("table.receiptNumber")}</th>
+              <th className="p-3">{t("table.date")}</th>
+              <th className="p-3">{t("table.cashier")}</th>
+              <th className="p-3">{t("table.payment")}</th>
+              <th className="p-3 text-right">{t("table.total")}</th>
+              <th className="p-3">{t("table.status")}</th>
+              <th className="p-3">{t("table.actions")}</th>
             </tr>
           </thead>
 
@@ -410,7 +408,9 @@ export default function OrdersPage() {
                 </td>
 
                 <td className="p-3">
-                  {new Date(order.createdAt).toLocaleString()}
+                  {new Date(order.createdAt).toLocaleString(
+                    locale === "km" ? "km-KH" : "en-US",
+                  )}
                 </td>
 
                 <td className="p-3">
@@ -418,7 +418,12 @@ export default function OrdersPage() {
                 </td>
 
                 <td className="p-3">
-                  {order.paymentMethod}
+                  {t(
+                    `paymentMethods.${order.paymentMethod}` as
+                      | "paymentMethods.CASH"
+                      | "paymentMethods.KHQR"
+                      | "paymentMethods.CARD",
+                  )}
                 </td>
 
                 <td
@@ -437,7 +442,12 @@ export default function OrdersPage() {
                       statusStyle[order.status] ?? "bg-gray-100"
                     }`}
                   >
-                    {order.status}
+                    {t(
+                      `statuses.${order.status}` as
+                        | "statuses.COMPLETED"
+                        | "statuses.VOIDED"
+                        | "statuses.REFUNDED",
+                    )}
                   </span>
                 </td>
 
@@ -448,7 +458,7 @@ export default function OrdersPage() {
                     onClick={() => view(order.id)}
                     className="text-blue-600 hover:underline disabled:opacity-50"
                   >
-                    {viewing ? "Loading..." : "View"}
+                    {viewing ? t("loading") : t("view")}
                   </button>
                 </td>
               </tr>
@@ -460,7 +470,7 @@ export default function OrdersPage() {
                   colSpan={7}
                   className="p-6 text-center text-gray-500"
                 >
-                  No receipts found
+                  {t("empty.noReceipts")}
                 </td>
               </tr>
             )}
@@ -471,7 +481,7 @@ export default function OrdersPage() {
                   colSpan={7}
                   className="p-6 text-center text-gray-500"
                 >
-                  No data available
+                  {t("empty.noData")}
                 </td>
               </tr>
             )}
@@ -490,12 +500,12 @@ export default function OrdersPage() {
             onClick={() => setPage((previous) => previous - 1)}
             className="rounded border px-3 py-2 disabled:opacity-40"
           >
-            ← Previous
+            ← {t("pagination.previous")}
           </button>
 
           <span>
-            Page {data.page + 1} / {data.totalPages}
-            {" "} (Total {data.totalElements})
+            {t("pagination.page")} {data.page + 1} / {data.totalPages}
+            {" "}({t("pagination.total")} {data.totalElements})
           </span>
 
           <button
@@ -506,7 +516,7 @@ export default function OrdersPage() {
             onClick={() => setPage((previous) => previous + 1)}
             className="rounded border px-3 py-2 disabled:opacity-40"
           >
-            Next →
+            {t("pagination.next")} →
           </button>
         </div>
       )}
@@ -516,7 +526,7 @@ export default function OrdersPage() {
       {selected && (
         <Receipt
           order={selected}
-          closeLabel="Close"
+          closeLabel={t("receipt.close")}
           onClose={() => setSelected(null)}
           extra={
             privileged && selected.status === "COMPLETED" ? (
@@ -529,7 +539,9 @@ export default function OrdersPage() {
                     onClick={() => cancel("void")}
                     className="flex-1 rounded border border-red-300 py-2 text-red-600 disabled:opacity-50"
                   >
-                    {actionLoading ? "Processing..." : "Void"}
+                    {actionLoading
+                      ? t("processing")
+                      : t("actions.void")}
                   </button>
                 )}
 
@@ -539,7 +551,9 @@ export default function OrdersPage() {
                   onClick={() => cancel("refund")}
                   className="flex-1 rounded border border-orange-300 py-2 text-orange-700 disabled:opacity-50"
                 >
-                  {actionLoading ? "Processing..." : "Refund"}
+                  {actionLoading
+                    ? t("processing")
+                    : t("actions.refund")}
                 </button>
               </div>
             ) : null

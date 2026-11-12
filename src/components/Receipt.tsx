@@ -1,10 +1,12 @@
+
 "use client";
 
 import type { ReactNode } from "react";
+import { useLocale, useTranslations } from "next-intl";
+
 import { money, riel } from "@/lib/money";
 import type { Order } from "@/types";
 import { useSettings } from "@/lib/useSettings";
-
 
 type Props = {
   order: Order;
@@ -16,115 +18,295 @@ type Props = {
 export default function Receipt({
   order,
   onClose,
-  closeLabel = "Continue Sales",
+  closeLabel,
   extra,
 }: Props) {
   const settings = useSettings();
+
+  const t = useTranslations("receipt");
+  const locale = useLocale();
+
+  // ---------- Locale ----------
+
+  const dateLocale = locale === "km" ? "km-KH" : "en-US";
+
+  // ---------- Payment Method Translation ----------
+
+  const paymentMethodLabels: Record<string, string> = {
+    CASH: t("paymentMethods.CASH"),
+    KHQR: t("paymentMethods.KHQR"),
+    CARD: t("paymentMethods.CARD"),
+  };
+
+  const paymentMethod =
+    paymentMethodLabels[order.paymentMethod] ??
+    order.paymentMethod;
+
+  // ---------- Order Status Translation ----------
+
+  const statusLabels: Record<string, string> = {
+    COMPLETED: t("statuses.COMPLETED"),
+    VOIDED: t("statuses.VOIDED"),
+    REFUNDED: t("statuses.REFUNDED"),
+  };
+
+  const status =
+    statusLabels[order.status] ?? order.status;
+
+  // ---------- Date Formatting ----------
+
+  const orderDate = new Date(order.createdAt).toLocaleString(
+    dateLocale
+  );
+
+  // ---------- Payment Currency ----------
+
+  const isKhr = order.paymentCurrency === "KHR";
+
+  const formatAmount = (amount: number) =>
+    isKhr ? riel(amount) : money(amount);
+
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
+
       <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-xl bg-white p-6 shadow-lg">
+
+        {/* ===== Receipt Content ===== */}
+
         <div id="receipt" className="font-mono text-sm">
+
+          {/* Store Information */}
+
           <h2 className="text-center text-lg font-bold">
-            {settings?.storeName ?? "POS System"}
+            {settings?.storeName ?? t("storeName")}
           </h2>
+
           {settings?.address && (
-            <p className="text-center text-xs">{settings.address}</p>
+            <p className="text-center text-xs">
+              {settings.address}
+            </p>
           )}
+
           {settings?.phone && (
-            <p className="text-center text-xs">Tel: {settings.phone}</p>
+            <p className="text-center text-xs">
+              {t("phone")}: {settings.phone}
+            </p>
           )}
-          <p className="text-center text-xs">Receipt</p>
+
+          <p className="text-center text-xs">
+            {t("receiptTitle")}
+          </p>
+
+          {/* Order Status */}
 
           {order.status !== "COMPLETED" && (
             <div className="my-2 border-2 border-red-600 p-1 text-center font-bold text-red-600">
-              *** {order.status} ***
+
+              *** {status} ***
+
               {order.cancelReason && (
-                <div className="text-xs font-normal">{order.cancelReason}</div>
+                <div className="text-xs font-normal">
+                  {order.cancelReason}
+                </div>
               )}
+
             </div>
           )}
 
           <hr className="my-2 border-dashed" />
 
-          <p>No: {order.orderNumber}</p>
-          <p>Date: {new Date(order.createdAt).toLocaleString()}</p>
-          <p>Cashier: {order.cashierEmail}</p>
+          {/* Order Information */}
+
+          <p>
+            {t("number")}: {order.orderNumber}
+          </p>
+
+          <p>
+            {t("date")}: {orderDate}
+          </p>
+
+          <p>
+            {t("cashier")}: {order.cashierEmail}
+          </p>
+
           <hr className="my-2 border-dashed" />
 
-          {order.items.map((i) => (
-            <div key={i.productId} className="mb-1">
-              <div>{i.productName}</div>
-              <div className="flex justify-between text-gray-600">
-                <span>
-                  {i.quantity} × {money(i.unitPrice)}
-                </span>
-                <span>{money(i.lineTotal)}</span>
+          {/* Order Items */}
+
+          {order.items.map((item, index) => (
+            <div
+              key={`${item.productId}-${index}`}
+              className="mb-1"
+            >
+
+              <div>
+                {item.productName}
               </div>
+
+              <div className="flex justify-between text-gray-600">
+
+                <span>
+                  {item.quantity} × {money(item.unitPrice)}
+                </span>
+
+                <span>
+                  {money(item.lineTotal)}
+                </span>
+
+              </div>
+
             </div>
           ))}
+
           <hr className="my-2 border-dashed" />
 
-          <Row label="Subtotal" value={money(order.subtotal)} />
-          {order.discountAmount > 0 && (
-            <Row label="Discount" value={`-${money(order.discountAmount)}`} />
-          )}
+          {/* Subtotal */}
+
           <Row
-            label={`VAT (${order.taxRate}%)`}
+            label={t("subtotal")}
+            value={money(order.subtotal)}
+          />
+
+          {/* Discount */}
+
+          {order.discountAmount > 0 && (
+            <Row
+              label={t("discount")}
+              value={`-${money(order.discountAmount)}`}
+            />
+          )}
+
+          {/* VAT */}
+
+          <Row
+            label={t("vat", {
+              rate: String(order.taxRate),
+            })}
             value={money(order.taxAmount)}
           />
-                    <div className="mt-1 flex justify-between text-base font-bold">
-            <span>TOTAL</span>
-            <span>{money(order.total)}</span>
+
+          {/* Total */}
+
+          <div className="mt-1 flex justify-between text-base font-bold">
+
+            <span>
+              {t("total")}
+            </span>
+
+            <span>
+              {money(order.total)}
+            </span>
+
           </div>
-          {order.totalKhr !== null && order.exchangeRate !== null && (
-            <div className="flex justify-between text-gray-600">
-              <span>≈ KHR (1$={order.exchangeRate.toLocaleString()}៛)</span>
-              <span>{riel(order.totalKhr)}</span>
-            </div>
-          )}
+
+          {/* Approximate KHR */}
+
+          {order.totalKhr !== null &&
+            order.exchangeRate !== null && (
+              <div className="flex justify-between text-gray-600">
+
+                <span>
+                  {t("approxKhr", {
+                    rate: order.exchangeRate.toLocaleString(
+                      dateLocale
+                    ),
+                  })}
+                </span>
+
+                <span>
+                  {riel(order.totalKhr)}
+                </span>
+
+              </div>
+            )}
+
           <hr className="my-2 border-dashed" />
 
-          {order.paymentCurrency === "KHR" ? (
+          {/* Payment Information */}
+
+          {isKhr ? (
             <>
-              <Row label={`Paid (${order.paymentMethod}, KHR)`} value={riel(order.amountPaid)} />
-              <Row label="Change" value={riel(order.changeAmount)} />
+              <Row
+                label={t("paid", {
+                  method: paymentMethod,
+                  currency: "KHR",
+                })}
+                value={riel(order.amountPaid)}
+              />
+
+              <Row
+                label={t("change")}
+                value={riel(order.changeAmount)}
+              />
             </>
           ) : (
             <>
-              <Row label={`Paid (${order.paymentMethod})`} value={money(order.amountPaid)} />
-              <Row label="Change" value={money(order.changeAmount)} />
+              <Row
+                label={t("paid", {
+                  method: paymentMethod,
+                  currency: "USD",
+                })}
+                value={money(order.amountPaid)}
+              />
+
+              <Row
+                label={t("change")}
+                value={money(order.changeAmount)}
+              />
             </>
           )}
+
           <hr className="my-2 border-dashed" />
 
-          <Row
-            label={`Paid (${order.paymentMethod})`}
-            value={money(order.amountPaid)}
-          />
-          <Row label="Change" value={money(order.changeAmount)} />
+          {/* Thank You */}
 
-          <p className="mt-4 text-center">Thank you!</p>
+          <p className="mt-4 text-center">
+            {t("thankYou")}
+          </p>
+
         </div>
 
+        {/* ===== Buttons ===== */}
+
         <div className="mt-5 flex gap-2 print:hidden">
+
           <button
+            type="button"
             onClick={() => window.print()}
             className="flex-1 rounded bg-blue-600 py-2 font-semibold text-white"
           >
-            🖨 Print
+            🖨 {t("print")}
           </button>
-          <button onClick={onClose} className="flex-1 rounded border py-2">
-            {closeLabel}
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded border py-2"
+          >
+            {closeLabel ?? t("continueSales")}
           </button>
+
         </div>
 
+        {/* Extra Content */}
+
         {extra}
+
       </div>
+
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+// ---------- Reusable Row Component ----------
+
+function Row({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex justify-between">
       <span>{label}</span>

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
+
 import { apiFetch } from "@/lib/api";
 import type { AppUser } from "@/types";
 
 type Props = {
-  user: AppUser | null; // null = create new
+  user: AppUser | null;
   isSelf: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -14,6 +16,10 @@ type Props = {
 const inputClass = "mt-1 w-full rounded border p-2 disabled:bg-gray-100";
 
 export default function UserForm({ user, isSelf, onClose, onSaved }: Props) {
+  const t = useTranslations("userForm");
+
+  // ---------- Form State ----------
+
   const [form, setForm] = useState({
     fullName: user?.fullName ?? "",
     email: user?.email ?? "",
@@ -21,20 +27,35 @@ export default function UserForm({ user, isSelf, onClose, onSaved }: Props) {
     role: user?.role ?? "CASHIER",
     active: user?.active ?? true,
   });
+
+  // ---------- UI States ----------
+
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  async function submit(e: React.FormEvent) {
+  // ---------- Submit Form ----------
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
     setSaving(true);
     setError("");
+
     try {
       if (user) {
+        // Update Existing User
+
         await apiFetch(`/api/users/${user.id}`, {
           method: "PUT",
-          body: JSON.stringify({ fullName: form.fullName, role: form.role, active: form.active }),
+          body: JSON.stringify({
+            fullName: form.fullName,
+            role: form.role,
+            active: form.active,
+          }),
         });
       } else {
+        // Create New User
+
         await apiFetch("/api/users", {
           method: "POST",
           body: JSON.stringify({
@@ -45,65 +66,167 @@ export default function UserForm({ user, isSelf, onClose, onSaved }: Props) {
           }),
         });
       }
+
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("genericError"));
     } finally {
       setSaving(false);
     }
   }
 
+  // ---------- UI ----------
+
   return (
     <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4">
-      <form onSubmit={submit} className="w-full max-w-md space-y-3 rounded-xl bg-white p-6 shadow-lg">
-        <h2 className="text-xl font-bold">{user ? "Edit Staff" : "Add New Staff"}</h2>
+      <form
+        onSubmit={submit}
+        className="w-full max-w-md space-y-3 rounded-xl bg-white p-6 shadow-lg"
+      >
+        {/* Form Title */}
 
-        {error && <div className="rounded bg-red-100 p-2 text-sm text-red-700">{error}</div>}
+        <h2 className="text-xl font-bold">
+          {user ? t("editTitle") : t("addTitle")}
+        </h2>
+
+        {/* Error Message */}
+
+        {error && (
+          <div className="rounded bg-red-100 p-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {/* Full Name */}
 
         <label className="block text-sm">
-          Full Name
-          <input className={inputClass} value={form.fullName}
-            onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
+          {t("fullName")}
+
+          <input
+            type="text"
+            className={inputClass}
+            value={form.fullName}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                fullName: e.target.value,
+              })
+            }
+            required
+          />
         </label>
 
+        {/* Email */}
+
         <label className="block text-sm">
-          Email
-          <input type="email" className={inputClass} value={form.email} disabled={!!user}
-            onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+          {t("email")}
+
+          <input
+            type="email"
+            className={inputClass}
+            value={form.email}
+            disabled={!!user}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                email: e.target.value,
+              })
+            }
+            required
+          />
         </label>
+
+        {/* Initial Password */}
 
         {!user && (
           <label className="block text-sm">
-            Initial Password
-            <input type="password" className={inputClass} value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-            <span className="text-xs text-gray-500">8–72 characters with letters and numbers</span>
+            {t("password")}
+
+            <input
+              type="password"
+              className={inputClass}
+              value={form.password}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  password: e.target.value,
+                })
+              }
+              minLength={8}
+              maxLength={72}
+              required
+            />
+
+            <span className="text-xs text-gray-500">{t("passwordHint")}</span>
           </label>
         )}
 
+        {/* Role */}
+
         <label className="block text-sm">
-          Role
-          <select className={inputClass} value={form.role} disabled={isSelf}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}>
-            <option value="CASHIER">CASHIER: POS sales only</option>
-            <option value="MANAGER">MANAGER: Manage products/reports</option>
-            <option value="ADMIN">ADMIN: Full access</option>
+          {t("role")}
+
+          <select
+            className={inputClass}
+            value={form.role}
+            disabled={isSelf}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                role: e.target.value,
+              })
+            }
+          >
+            <option value="CASHIER">{t("roles.CASHIER")}</option>
+
+            <option value="MANAGER">{t("roles.MANAGER")}</option>
+
+            <option value="ADMIN">{t("roles.ADMIN")}</option>
           </select>
         </label>
 
+        {/* Active Account */}
+
         {user && (
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.active} disabled={isSelf}
-              onChange={(e) => setForm({ ...form, active: e.target.checked })} />
-            Active Account (Can Login)
+            <input
+              type="checkbox"
+              checked={form.active}
+              disabled={isSelf}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  active: e.target.checked,
+                })
+              }
+            />
+
+            {t("activeAccount")}
           </label>
         )}
-        {isSelf && <p className="text-xs text-gray-500">You cannot change your own role or disable your own account</p>}
+
+        {/* Self Account Warning */}
+
+        {isSelf && <p className="text-xs text-gray-500">{t("selfWarning")}</p>}
+
+        {/* Form Buttons */}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-          <button disabled={saving} className="rounded bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
-            {saving ? "Saving..." : "Save"}
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded border px-4 py-2 disabled:opacity-50"
+          >
+            {t("cancel")}
+          </button>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+          >
+            {saving ? t("saving") : t("save")}
           </button>
         </div>
       </form>

@@ -1,6 +1,9 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
 import type { Settings } from "@/types";
@@ -26,6 +29,8 @@ const initialForm: SettingsForm = {
 };
 
 export default function SettingsPage() {
+  const t = useTranslations("settings");
+
   const me = useMe();
   const isAdmin = me?.role === "ADMIN";
 
@@ -35,6 +40,7 @@ export default function SettingsPage() {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Load settings
   useEffect(() => {
     let cancelled = false;
 
@@ -60,11 +66,13 @@ export default function SettingsPage() {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Unable to load settings",
+            err instanceof Error ? err.message : t("loadError"),
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
@@ -73,8 +81,9 @@ export default function SettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
+  // Handle form changes
   function handleChange(key: keyof SettingsForm, value: string) {
     setForm((previous) => ({
       ...previous,
@@ -82,7 +91,8 @@ export default function SettingsPage() {
     }));
   }
 
-  async function save(e: React.FormEvent<HTMLFormElement>) {
+  // Save settings
+  async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     setError("");
@@ -92,25 +102,28 @@ export default function SettingsPage() {
     const usdToKhr = Number(form.usdToKhr);
     const lowStockThreshold = Number(form.defaultLowStockThreshold);
 
+    // VAT validation
     if (
       !Number.isFinite(taxRate) ||
       taxRate < 0 ||
       taxRate > 100
     ) {
-      setError("VAT must be between 0 and 100");
+      setError(t("invalidVat"));
       return;
     }
 
+    // Exchange rate validation
     if (!Number.isFinite(usdToKhr) || usdToKhr <= 0) {
-      setError("Exchange rate must be greater than 0");
+      setError(t("invalidExchangeRate"));
       return;
     }
 
+    // Low stock validation
     if (
       !Number.isInteger(lowStockThreshold) ||
       lowStockThreshold < 0
     ) {
-      setError("Low stock threshold must be an integer of 0 or greater");
+      setError(t("invalidLowStock"));
       return;
     }
 
@@ -129,32 +142,39 @@ export default function SettingsPage() {
         }),
       });
 
-      setMessage("Saved successfully ✅");
+      setMessage(t("saveSuccess"));
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Unable to save settings",
+        err instanceof Error ? err.message : t("saveError"),
       );
     } finally {
       setSaving(false);
     }
   }
 
+  // Loading user
   if (!me) {
-    return <p className="p-8">Loading user information...</p>;
+    return (
+      <p className="p-8">{t("loadingUser")}</p>
+    );
   }
 
+  // Admin only
   if (!isAdmin) {
     return (
       <p className="p-8 text-red-600">
-        Only Admins can modify settings
+        {t("adminOnly")}
       </p>
     );
   }
 
   return (
     <main className="mx-auto max-w-lg p-8">
-      <h1 className="mb-4 text-2xl font-bold">Store Settings</h1>
+      <h1 className="mb-4 text-2xl font-bold">
+        {t("title")}
+      </h1>
 
+      {/* Error */}
       {error && (
         <div
           role="alert"
@@ -164,6 +184,7 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Success */}
       {message && (
         <div
           role="status"
@@ -174,47 +195,61 @@ export default function SettingsPage() {
       )}
 
       {loading ? (
-        <p className="py-6">Loading settings...</p>
+        <p className="py-6">{t("loadingSettings")}</p>
       ) : (
         <form
           onSubmit={save}
           className="space-y-4 rounded-xl bg-white p-6 shadow"
         >
+          {/* Store Name */}
           <label className="block text-sm">
-            Store Name
+            {t("storeName")}
+
             <input
               className={inputClass}
               value={form.storeName}
-              onChange={(e) => handleChange("storeName", e.target.value)}
+              onChange={(e) =>
+                handleChange("storeName", e.target.value)
+              }
               required
               maxLength={150}
             />
           </label>
 
+          {/* Address */}
           <label className="block text-sm">
-            Address
+            {t("address")}
+
             <input
               className={inputClass}
               value={form.address}
-              onChange={(e) => handleChange("address", e.target.value)}
+              onChange={(e) =>
+                handleChange("address", e.target.value)
+              }
               maxLength={255}
             />
           </label>
 
+          {/* Phone */}
           <label className="block text-sm">
-            Phone Number
+            {t("phone")}
+
             <input
               type="tel"
               className={inputClass}
               value={form.phone}
-              onChange={(e) => handleChange("phone", e.target.value)}
+              onChange={(e) =>
+                handleChange("phone", e.target.value)
+              }
               maxLength={30}
             />
           </label>
 
+          {/* VAT and Exchange Rate */}
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">
-              VAT (%)
+              {t("vat")}
+
               <input
                 type="number"
                 step="0.01"
@@ -222,27 +257,34 @@ export default function SettingsPage() {
                 max="100"
                 className={inputClass}
                 value={form.taxRate}
-                onChange={(e) => handleChange("taxRate", e.target.value)}
+                onChange={(e) =>
+                  handleChange("taxRate", e.target.value)
+                }
                 required
               />
             </label>
 
             <label className="block text-sm">
-              1 USD = ? KHR
+              {t("exchangeRate")}
+
               <input
                 type="number"
                 step="0.01"
                 min="0.01"
                 className={inputClass}
                 value={form.usdToKhr}
-                onChange={(e) => handleChange("usdToKhr", e.target.value)}
+                onChange={(e) =>
+                  handleChange("usdToKhr", e.target.value)
+                }
                 required
               />
             </label>
           </div>
 
+          {/* Low Stock Threshold */}
           <label className="block text-sm">
-            Default Low Stock Threshold
+            {t("lowStockThreshold")}
+
             <input
               type="number"
               min="0"
@@ -250,22 +292,27 @@ export default function SettingsPage() {
               className={inputClass}
               value={form.defaultLowStockThreshold}
               onChange={(e) =>
-                handleChange("defaultLowStockThreshold", e.target.value)
+                handleChange(
+                  "defaultLowStockThreshold",
+                  e.target.value,
+                )
               }
               required
             />
           </label>
 
+          {/* VAT Note */}
           <p className="text-xs text-gray-500">
-            Changing VAT only applies to <b>new</b> sales. Older receipts remain unchanged.
+            {t("vatNote")}
           </p>
 
+          {/* Save */}
           <button
             type="submit"
             disabled={saving}
             className="w-full rounded bg-blue-600 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? t("saving") : t("save")}
           </button>
         </form>
       )}

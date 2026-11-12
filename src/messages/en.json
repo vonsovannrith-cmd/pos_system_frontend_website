@@ -34,8 +34,12 @@
     "newPlaceholder": "New category name",
     "add": "Add",
     "delete": "Delete",
-    "deleteConfirm": "Delete {name} ?",
-    "empty": "No categories yet"
+    "deleteConfirm": "Are you sure you want to delete category \"{name}\"?",
+    "empty": "No categories found.",
+    "loading": "Loading categories...",
+    "saving": "Saving...",
+    "nameRequired": "Category name is required.",
+    "genericError": "Something went wrong. Please try again."
   },
   "products": {
     "title": "Products",
@@ -59,7 +63,8 @@
     "deactivate": "Disable",
     "stockPrompt": "How many units to add to {name}?",
     "invalidQty": "Quantity must be a whole number greater than 0",
-    "empty": "No products found"
+    "empty": "No products found",
+    "genericError": "Something went wrong. Please try again."
   },
   "productForm": {
     "titleNew": "Add new product",
@@ -78,7 +83,8 @@
     "removeImage": "Remove current image",
     "imageBadType": "Only JPEG or PNG files are allowed",
     "imageTooBig": "File is larger than 5 MB",
-    "imageUploadFailed": "The product was saved, but the image failed: {reason}"
+    "imageUploadFailed": "The product was saved, but the image failed: {reason}",
+    "genericError": "An error occurred. Please try again."
   },
   "pos": {
     "searchPlaceholder": "Search or scan barcode (Enter)",
@@ -120,6 +126,269 @@
     "noHeld": "No carts on hold",
     "noteInactive": "{name}: no longer on sale",
     "noteOutOfStock": "{name}: out of stock",
-    "noteReduced": "{name}: only {stock} left (was {wanted})"
+    "noteReduced": "{name}: only {stock} left (was {wanted})",
+    "genericError": "Something went wrong. Please try again.",
+    "paymentMethods": {
+      "CASH": "Cash",
+      "KHQR": "KHQR",
+      "CARD": "Card"
+    }
+  },
+  "dashboard": {
+    "welcome": "Welcome, {name} 👋",
+    "role": "Role",
+    "logout": "Logout",
+    "startPos": "🛒 Start POS",
+    "loading": "Loading...",
+    "loadingData": "Loading dashboard data...",
+    "loadingChart": "Loading chart...",
+    "errorDashboard": "Error loading dashboard data",
+    "errorChart": "Error loading chart data",
+    "todaySales": "Today's Sales",
+    "monthSales": "This Month's Sales",
+    "monthVat": "This Month's VAT",
+    "orders": "Orders",
+    "lowStock": "Low Stock Items",
+    "clickToView": "Click to view",
+    "sales": "Sales",
+    "days30": "30 Days",
+    "weeks12": "12 Weeks",
+    "months12": "12 Months",
+    "topProducts": "Top Selling Products (Last 7 Days)",
+    "product": "Product",
+    "quantity": "Quantity",
+    "totalSales": "Sales",
+    "noSales": "No sales yet"
+  },
+  "orders": {
+    "title": "Sales History",
+    "myOrders": "My Orders",
+    "loadingUser": "Loading user information...",
+    "loadingOrders": "Loading sales history...",
+    "loading": "Loading...",
+    "view": "View",
+    "processing": "Processing...",
+    "filters": {
+      "receiptNumber": "Receipt Number",
+      "from": "From",
+      "to": "To",
+      "allPaymentMethods": "All Payment Methods",
+      "allStatuses": "All Statuses",
+      "cashierEmail": "Cashier Email",
+      "clear": "Clear Filters"
+    },
+    "paymentMethods": {
+      "CASH": "Cash",
+      "KHQR": "KHQR",
+      "CARD": "Card"
+    },
+    "statuses": {
+      "COMPLETED": "Completed",
+      "VOIDED": "Voided",
+      "REFUNDED": "Refunded"
+    },
+    "table": {
+      "receiptNumber": "Receipt No.",
+      "date": "Date",
+      "cashier": "Cashier",
+      "payment": "Payment",
+      "total": "Total",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "empty": {
+      "noReceipts": "No receipts found",
+      "noData": "No data available"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page",
+      "total": "Total"
+    },
+    "receipt": {
+      "close": "Close"
+    },
+    "actions": {
+      "void": "Void",
+      "refund": "Refund"
+    },
+    "prompts": {
+      "voidReason": "Please enter the void reason:",
+      "refundReason": "Please enter the refund reason:"
+    },
+    "errors": {
+      "invalidDateRange": "Start date cannot be later than end date",
+      "loadOrders": "Unable to load sales history",
+      "viewReceipt": "Unable to display receipt",
+      "cannotVoidPreviousDay": "Cannot void orders from previous days",
+      "voidOrder": "Unable to void order",
+      "refundOrder": "Unable to refund order"
+    }
+  },
+  "receipt": {
+    "storeName": "POS System",
+    "phone": "Tel",
+    "receiptTitle": "Receipt",
+    "number": "No",
+    "date": "Date",
+    "cashier": "Cashier",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "vat": "VAT ({rate}%)",
+    "total": "TOTAL",
+    "approxKhr": "≈ KHR (1$={rate}៛)",
+    "paid": "Paid ({method}, {currency})",
+    "change": "Change",
+    "thankYou": "Thank you!",
+    "print": "Print",
+    "continueSales": "Continue Sales",
+    "paymentMethods": {
+      "CASH": "Cash",
+      "KHQR": "KHQR",
+      "CARD": "Card"
+    },
+    "statuses": {
+      "COMPLETED": "Completed",
+      "VOIDED": "Voided",
+      "REFUNDED": "Refunded"
+    }
+  },
+  "userForm": {
+    "addTitle": "Add New Staff",
+    "editTitle": "Edit Staff",
+    "fullName": "Full Name",
+    "email": "Email",
+    "password": "Initial Password",
+    "passwordHint": "8–72 characters with letters and numbers",
+    "role": "Role",
+    "roles": {
+      "CASHIER": "CASHIER: POS sales only",
+      "MANAGER": "MANAGER: Manage products/reports",
+      "ADMIN": "ADMIN: Full access"
+    },
+    "activeAccount": "Active Account (Can Login)",
+    "selfWarning": "You cannot change your own role or disable your own account.",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "genericError": "An error occurred. Please try again."
+  },
+  "users": {
+    "title": "Staff Management",
+    "add": "Add Staff",
+    "searchPlaceholder": "Search by name / email",
+    "loading": "Loading...",
+    "adminOnly": "Only Admins can manage staff",
+    "genericError": "An error occurred. Please try again.",
+
+    "colName": "Name",
+    "colEmail": "Email",
+    "colRole": "Role",
+    "colStatus": "Status",
+    "colActions": "Actions",
+
+    "you": "You",
+
+    "roles": {
+      "ADMIN": "ADMIN",
+      "MANAGER": "MANAGER",
+      "CASHIER": "CASHIER"
+    },
+
+    "statusActive": "Active",
+    "statusDisabled": "Disabled",
+
+    "edit": "Edit",
+    "resetPassword": "Reset Password",
+    "disable": "Disable",
+    "enable": "Enable",
+    "empty": "No staff found",
+
+    "resetTitle": "Reset Password: {name}",
+    "newPasswordPlaceholder": "New password (8+ characters)",
+    "cancel": "Cancel",
+    "reset": "Reset",
+
+    "resetSuccess": "New password set for {name}. Please ask them to change it after login."
+  },
+  "settings": {
+    "title": "Store Settings",
+    "loadingUser": "Loading user information...",
+    "loadingSettings": "Loading settings...",
+    "adminOnly": "Only Admins can modify settings",
+
+    "storeName": "Store Name",
+    "address": "Address",
+    "phone": "Phone Number",
+    "vat": "VAT (%)",
+    "exchangeRate": "1 USD = ? KHR",
+    "lowStockThreshold": "Default Low Stock Threshold",
+
+    "vatNote": "Changing VAT only applies to new sales. Older receipts remain unchanged.",
+
+    "invalidVat": "VAT must be between 0 and 100.",
+    "invalidExchangeRate": "Exchange rate must be greater than 0.",
+    "invalidLowStock": "Low stock threshold must be an integer of 0 or greater.",
+
+    "loadError": "Unable to load settings.",
+    "saveError": "Unable to save settings.",
+    "saveSuccess": "Settings saved successfully!",
+
+    "saving": "Saving...",
+    "save": "Save"
+  },
+  "reports": {
+    "title": "Sales Report",
+    "loadingUser": "Loading user information...",
+    "permissionDenied": "You do not have permission to view reports.",
+
+    "from": "From",
+    "to": "To",
+    "exportExcel": "Export Excel",
+    "downloading": "Downloading...",
+
+    "invalidDateRange": "Please select a valid date range. The start date must be earlier than or equal to the end date.",
+
+    "loadingReport": "Loading report...",
+    "noReport": "No report data available.",
+
+    "revenue": "Revenue (Inc. VAT)",
+    "orders": "Orders",
+    "averageOrder": "Average / Order",
+    "discount": "Discount",
+    "vat": "VAT",
+
+    "byCashier": "By Cashier",
+    "cashier": "Cashier",
+
+    "byDate": "By Date",
+    "date": "Date",
+
+    "byProduct": "By Product",
+    "productNote": "* Product sales are calculated before order discounts and VAT. Therefore, the sum may differ from the total revenue above.",
+
+    "sku": "SKU",
+    "product": "Product",
+    "quantity": "Quantity",
+    "sales": "Sales",
+
+    "noData": "No data",
+
+    "loadError": "Unable to load report.",
+    "exportError": "Unable to export Excel."
+  },
+  "account": {
+    "title": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password",
+    "passwordHint": "8–72 characters with letters and numbers",
+    "passwordMismatch": "New password and confirmation do not match.",
+    "passwordInvalid": "Password must be 8–72 characters and contain both letters and numbers.",
+    "success": "Password changed successfully!",
+    "genericError": "An error occurred. Please try again.",
+    "saving": "Saving...",
+    "changePassword": "Change Password"
   }
 }
