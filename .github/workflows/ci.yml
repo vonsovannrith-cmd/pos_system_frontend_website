@@ -1,0 +1,52 @@
+
+name: Frontend CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and Test Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout source code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js 22
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Run ESLint
+      - name: Run ESLint
+        run: npm run lint
+
+      # 5. Check TypeScript
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      # 6. Build Next.js
+      - name: Build Next.js
+        run: npm run build
+        env:
+          BACKEND_URL: http://localhost:8080
