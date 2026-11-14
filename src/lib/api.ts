@@ -1,205 +1,226 @@
-// Same-origin: Next.js Rewrite forwards /api/* to Spring Boot Backend.
-export const API_URL = "";
 
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
+  import {
+    locales,
+    defaultLocale,
+    LOCALE_COOKIE,
+    type Locale,
+  } from "@/i18n/config";
 
-const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+  // Same-origin: Next.js Rewrite forwards /api/* to Spring Boot Backend.
+  export const API_URL = "";
 
-function readCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-
-  const found = document.cookie
-    .split("; ")
-    .find((cookie) => cookie.startsWith(`${name}=`));
-
-  if (!found) return null;
-
-  try {
-    return decodeURIComponent(found.slice(name.length + 1));
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Get CSRF token for requests that modify data.
- *
- * Spring Boot sets the XSRF-TOKEN cookie through:
- * GET /api/auth/csrf
- */
-async function csrfHeader(method: string): Promise<Headers> {
-  const headers = new Headers();
-
-  if (!UNSAFE.has(method)) {
-    return headers;
+  export class ApiError extends Error {
+    constructor(
+      public status: number,
+      message: string,
+    ) {
+      super(message);
+      this.name = "ApiError";
+    }
   }
 
-  let token = readCookie("XSRF-TOKEN");
+  const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-  // Request a CSRF cookie if it does not exist.
-  if (!token) {
-    const response = await fetch("/api/auth/csrf", {
-      method: "GET",
-      credentials: "same-origin",
-      cache: "no-store",
-    });
+  function readCookie(name: string): string | null {
+    if (typeof document === "undefined") return null;
 
-    if (!response.ok) {
-      throw new ApiError(
-        response.status,
-        "Unable to initialize CSRF protection",
+    const found = document.cookie
+      .split("; ")
+      .find((cookie) => cookie.startsWith(`${name}=`));
+
+    if (!found) return null;
+
+    try {
+      return decodeURIComponent(found.slice(name.length + 1));
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get current locale from URL, then cookie.
+   */
+  function getCurrentLocale(): Locale {
+    if (typeof window === "undefined") {
+      return defaultLocale;
+    }
+
+    const urlLocale = window.location.pathname.split("/")[1];
+
+    if (locales.includes(urlLocale as Locale)) {
+      return urlLocale as Locale;
+    }
+
+    const cookieLocale = readCookie(LOCALE_COOKIE);
+
+    if (cookieLocale && locales.includes(cookieLocale as Locale)) {
+      return cookieLocale as Locale;
+    }
+
+    return defaultLocale;
+  }
+
+  /**
+   * Get CSRF token for requests that modify data.
+   */
+  async function csrfHeader(method: string): Promise<Headers> {
+    const headers = new Headers();
+
+    if (!UNSAFE.has(method)) {
+      return headers;
+    }
+
+    let token = readCookie("XSRF-TOKEN");
+
+    if (!token) {
+      const response = await fetch("/api/auth/csrf", {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new ApiError(
+          response.status,
+          "Unable to initialize CSRF protection",
+        );
+      }
+
+      token = readCookie("XSRF-TOKEN");
+    }
+
+    if (!token) {
+      throw new Error(
+        "CSRF token is missing. Please refresh the page and try again.",
       );
     }
 
-    // Read the cookie after the server response.
-    token = readCookie("XSRF-TOKEN");
+    headers.set("X-XSRF-TOKEN", token);
+
+    return headers;
   }
 
-  // Never send an unsafe request without a CSRF token.
-  if (!token) {
-    throw new Error(
-      "CSRF token is missing. Please refresh the page and try again.",
-    );
+  /**
+   * Handle API errors.
+   */
+  async function fail(res: Response, path: string): Promise<never> {
+    if (
+      res.status === 401 &&
+      !path.startsWith("/api/auth/login") &&
+      !path.startsWith("/api/auth/logout") &&
+      typeof window !== "undefined"
+    ) {
+      const locale = getCurrentLocale();
+
+      window.location.replace(`/${locale}/login`);
+    }
+
+    let message =
+      res.status === 403
+        ? "You do not have permission to perform this action"
+        : "An error occurred";
+
+    try {
+      const body = await res.json();
+      message = body.message ?? message;
+    } catch {
+      // Keep the default error message.
+    }
+
+    throw new ApiError(res.status, message);
   }
 
-  headers.set("X-XSRF-TOKEN", token);
+  /**
+   * General API request.
+   */
+  export async function apiFetch<T>(
+    path: string,
+    options: RequestInit = {},
+  ): Promise<T> {
+    const method = (options.method ?? "GET").toUpperCase();
+    const headers = new Headers(options.headers);
 
-  return headers;
-}
+    if (!headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
 
-/**
- * Handle API errors.
- */
-async function fail(res: Response, path: string): Promise<never> {
-  // Redirect when authentication expires.
-  if (
-    res.status === 401 &&
-    !path.startsWith("/api/auth/login") &&
-    typeof window !== "undefined"
-  ) {
-    window.location.replace("/login");
+    const csrfHeaders = await csrfHeader(method);
+
+    csrfHeaders.forEach((value, key) => {
+      headers.set(key, value);
+    });
+
+    const res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      method,
+      credentials: "same-origin",
+      headers,
+    });
+
+    if (!res.ok) {
+      return fail(res, path);
+    }
+
+    if (res.status === 204) {
+      return undefined as T;
+    }
+
+    return res.json() as Promise<T>;
   }
 
-  let message =
-    res.status === 403
-      ? "You do not have permission to perform this action"
-      : "An error occurred";
+  /**
+   * Upload files using multipart/form-data.
+   */
+  export async function apiUpload<T>(
+    path: string,
+    formData: FormData,
+  ): Promise<T> {
+    const headers = await csrfHeader("POST");
 
-  try {
-    const body = await res.json();
-    message = body.message ?? message;
-  } catch {
-    // Keep the default error message.
+    const res = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      return fail(res, path);
+    }
+
+    if (res.status === 204) {
+      return undefined as T;
+    }
+
+    return res.json() as Promise<T>;
   }
 
-  throw new ApiError(res.status, message);
-}
+  /**
+   * Download a file from the backend.
+   */
+  export async function apiDownload(
+    path: string,
+    filename: string,
+  ): Promise<void> {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: "GET",
+      credentials: "same-origin",
+    });
 
-/**
- * General API request.
- */
-export async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const method = (options.method ?? "GET").toUpperCase();
+    if (!res.ok) {
+      return fail(res, path);
+    }
 
-  // Preserve custom headers.
-  const headers = new Headers(options.headers);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
 
-  if (!headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
   }
-
-  // Add CSRF header for POST, PUT, PATCH and DELETE.
-  const csrfHeaders = await csrfHeader(method);
-
-  csrfHeaders.forEach((value, key) => {
-    headers.set(key, value);
-  });
-
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    method,
-    credentials: "same-origin",
-    headers,
-  });
-
-  if (!res.ok) {
-    return fail(res, path);
-  }
-
-  if (res.status === 204) {
-    return undefined as T;
-  }
-
-  return res.json() as Promise<T>;
-}
-
-/**
- * Upload files using multipart/form-data.
- *
- * Do not set Content-Type manually.
- * Browser automatically adds the multipart boundary.
- */
-export async function apiUpload<T>(
-  path: string,
-  formData: FormData,
-): Promise<T> {
-  const headers = await csrfHeader("POST");
-
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    credentials: "same-origin",
-    headers,
-    body: formData,
-  });
-
-  if (!res.ok) {
-    return fail(res, path);
-  }
-
-  if (res.status === 204) {
-    return undefined as T;
-  }
-
-  return res.json() as Promise<T>;
-}
-
-/**
- * Download a file from the backend.
- */
-export async function apiDownload(
-  path: string,
-  filename: string,
-): Promise<void> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "GET",
-    credentials: "same-origin",
-  });
-
-  if (!res.ok) {
-    return fail(res, path);
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  URL.revokeObjectURL(url);
-}

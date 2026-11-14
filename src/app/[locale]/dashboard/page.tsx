@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-
+import { useLocale } from "next-intl";
 import { apiFetch } from "@/lib/api";
 import { money } from "@/lib/money";
 import { useMe } from "@/lib/useMe";
@@ -49,7 +49,7 @@ function Stat({
 export default function DashboardPage() {
   const router = useRouter();
   const t = useTranslations("dashboard");
-
+  const locale = useLocale();
   const me = useMe();
 
   const privileged =
@@ -148,11 +148,11 @@ export default function DashboardPage() {
     };
   }, [privileged, period, t]);
 
-  async function logout() {
+      async function logout() {
       try {
-        await apiFetch("/api/auth/logout", { method: "POST" });   // Server លុប Cookie
+        await apiFetch("/api/auth/logout", { method: "POST" });
       } finally {
-        router.replace("/login");
+        router.replace("/login", { locale });
       }
     }
 

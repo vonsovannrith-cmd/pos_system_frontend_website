@@ -1,9 +1,9 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
 import type { Settings } from "@/types";
@@ -162,14 +162,33 @@ export default function SettingsPage() {
   // Admin only
   if (!isAdmin) {
     return (
-      <p className="p-8 text-red-600">
-        {t("adminOnly")}
-      </p>
+      <main className="mx-auto max-w-lg p-8">
+        <div className="mb-6">
+          <Link
+            href="/dashboard"
+            className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1"
+          >
+            ← {t("backToDashboard") || "Back to Dashboard"}
+          </Link>
+        </div>
+        <p className="p-8 text-red-600">
+          {t("adminOnly")}
+        </p>
+      </main>
     );
   }
 
   return (
     <main className="mx-auto max-w-lg p-8">
+      {/* Navigation / Back to Dashboard Link */}
+      <div className="mb-6">
+        <Link
+          href="/dashboard"
+          className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1 font-medium"
+        >
+          ← {t("backToDashboard") || "Back to Dashboard"}
+        </Link>
+      </div>
       <h1 className="mb-4 text-2xl font-bold">
         {t("title")}
       </h1>

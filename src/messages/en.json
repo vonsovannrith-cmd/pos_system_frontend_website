@@ -336,7 +336,8 @@
     "saveSuccess": "Settings saved successfully!",
 
     "saving": "Saving...",
-    "save": "Save"
+    "save": "Save",
+    "backToDashboard": "Back to Dashboard"
   },
   "reports": {
     "title": "Sales Report",
